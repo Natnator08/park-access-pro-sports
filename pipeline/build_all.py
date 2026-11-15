@@ -12,6 +12,7 @@ import datetime as dt
 import json
 import math
 
+import geopandas as gpd
 import shapely
 
 import build_metrics
@@ -92,8 +93,13 @@ def check(cfg, tracts, nb, athletes, summary):
     assert 0.2 < t["est_participation"] < 0.9, "implausible participation"
     assert t["pros"] > 0, "no athletes matched"
     assert athletes["nid"].isin(nb["nid"]).mean() > 0.95, "athletes not matched to neighborhoods"
-    acs_pop = summary["_acs_pop"]
-    assert abs(t["pop"] - acs_pop) / acs_pop < 0.02, f"population mismatch {t['pop']:,} vs ACS {acs_pop:,}"
+    # Neighborhood totals should account for (nearly) all ACS population assigned to
+    # the city's blocks; a bigger gap means residents were silently dropped.
+    exp = summary["_expected_pop"]
+    assert abs(t["pop"] - exp) / exp < 0.02, f"population mismatch {t['pop']:,} vs expected {exp:,}"
+    if not cfg["neighborhoods"].get("clip_tracts"):
+        acs_pop = summary["_acs_pop"]
+        assert abs(t["pop"] - acs_pop) / acs_pop < 0.02, f"population mismatch {t['pop']:,} vs ACS {acs_pop:,}"
     log("sanity checks passed")
 
 
@@ -106,11 +112,16 @@ def main():
     print("1/5 Census")
     tracts = fetch_census.tracts(cfg)
     if cfg["neighborhoods"].get("clip_tracts"):
-        # The "city" is smaller than its counties: keep tracts whose interior
-        # point falls inside the neighborhood boundaries.
-        area = build_metrics.neighborhood_shapes(cfg).union_all()
-        tracts = tracts[tracts.representative_point().within(area)].reset_index(drop=True)
-        log(f"{len(tracts):,} tracts inside the neighborhood boundaries")
+        # The "city" is smaller than its counties: keep every tract that overlaps the
+        # neighborhood boundaries. Census blocks later decide which residents of a
+        # straddling tract are actually inside the city.
+        area = gpd.GeoSeries([build_metrics.neighborhood_shapes(cfg).union_all()], crs=4326)
+        crs = tracts.estimate_utm_crs()
+        area_p = area.to_crs(crs).iloc[0]
+        tp = tracts.to_crs(crs)
+        overlap = tp.geometry.intersection(area_p).area / tp.geometry.area
+        tracts = tracts[overlap.to_numpy() > 0.001].reset_index(drop=True)
+        log(f"{len(tracts):,} tracts overlap the neighborhood boundaries")
     if not cfg.get("bbox"):
         cfg["bbox"] = [round(v, 3) for v in tracts.total_bounds]
     acs = fetch_census.acs(cfg)
@@ -127,7 +138,7 @@ def main():
     nb, athletes, summary = build_metrics.build(cfg, tracts, acs, blocks, parks, walk, facilities, athletes, participation)
     summary["_acs_pop"] = int(acs["pop"].sum())
     check(cfg, tracts, nb, athletes, summary)
-    del summary["_acs_pop"]
+    del summary["_acs_pop"], summary["_expected_pop"]
     write_outputs(cfg, nb, athletes, parks, summary)
 
     t = summary["totals"]

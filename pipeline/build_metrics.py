@@ -60,6 +60,7 @@ def neighborhood_shapes(cfg: dict) -> gpd.GeoDataFrame | None:
     g["name"] = g["name"].astype(str).str.strip()
     if n.get("title_case"):
         g["name"] = g["name"].str.title()
+    g["name"] = g["name"].replace(n.get("name_fixes", {}))
     g["geometry"] = g.geometry.make_valid()
     g = g.dissolve("name", as_index=False)[["name", "geometry"]]
     g.to_parquet(cache)
@@ -81,14 +82,15 @@ def neighborhoods(cfg: dict, tracts: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return g
 
 
-def assign_points(points: gpd.GeoDataFrame, polys: gpd.GeoDataFrame, crs) -> pd.Series:
-    """Neighborhood id for each point; points in gaps snap to the nearest polygon."""
+def assign_points(points: gpd.GeoDataFrame, polys: gpd.GeoDataFrame, crs, snap_m: float = 500) -> pd.Series:
+    """Neighborhood id for each point. Points in small gaps between polygons snap to
+    the nearest one within snap_m meters (0 = no snapping)."""
     j = gpd.sjoin(points[["geometry"]], polys[["nid", "geometry"]], predicate="within", how="left")
     j = j[~j.index.duplicated()]
     miss = j["nid"].isna()
-    if miss.any():
+    if miss.any() and snap_m > 0:
         near = gpd.sjoin_nearest(points.loc[miss, ["geometry"]].to_crs(crs),
-                                 polys[["nid", "geometry"]].to_crs(crs), max_distance=500)
+                                 polys[["nid", "geometry"]].to_crs(crs), max_distance=snap_m)
         near = near[~near.index.duplicated()]
         j.loc[near.index, "nid"] = near["nid"]
     return j["nid"]
@@ -147,15 +149,20 @@ def build(cfg, tracts, acs, blocks, parks, walk, facilities, athletes, participa
 
     # ---- blocks: neighborhood, walk access, and tract-share weights
     blocks = blocks[blocks["tract"].isin(tracts["GEOID"])].copy()
-    blocks["nid"] = assign_points(blocks, nb, crs)
+    # Each block's share of its tract, computed over ALL the tract's blocks, so a tract
+    # that straddles the city limit contributes only the part inside the city.
+    blocks["w"] = blocks["pop2020"] / blocks.groupby("tract")["pop2020"].transform("sum")
+    clipped = cfg["neighborhoods"].get("clip_tracts", False)
+    # For clipped cities, blocks outside the boundary are genuinely outside the city: no snapping.
+    blocks["nid"] = assign_points(blocks, nb, crs, snap_m=0 if clipped else 500)
     lost = blocks["nid"].isna()
     if lost.any():
-        log(f"warning: {blocks.loc[lost, 'pop2020'].sum():,.0f} residents fell outside every neighborhood")
+        msg = "lived outside the city boundary in partly-included tracts" if clipped else "fell outside every neighborhood"
+        log(f"{'note' if clipped else 'warning'}: {blocks.loc[lost, 'pop2020'].sum():,.0f} residents (2020) {msg}")
     blocks = blocks[~lost].copy()
     blocks["nid"] = blocks["nid"].astype(int)
     in_walk = gpd.sjoin(blocks[["geometry"]], walk[["geometry"]], predicate="within").index.unique()
     blocks["in_walk"] = blocks.index.isin(in_walk)
-    blocks["w"] = blocks["pop2020"] / blocks.groupby("tract")["pop2020"].transform("sum")
 
     # ---- spread tract ACS counts onto blocks
     rate = {b: participation["brackets"][b]["rate"] for b in BRACKETS}
@@ -168,6 +175,7 @@ def build(cfg, tracts, acs, blocks, parks, walk, facilities, athletes, participa
     b["inc_x_pop"] = b["median_income"] * b["pop"]
     b["pop_with_inc"] = b["pop"].where(b["median_income"].notna(), 0)
     b["pop_in_walk"] = b["pop2020"].where(b["in_walk"], 0)
+    summary_expected_pop = float(b["pop"].sum())
     agg = b.groupby("nid")[count_cols + ["inc_x_pop", "pop_with_inc", "pop2020", "pop_in_walk"]].sum(min_count=1)
 
     # ---- parks: acres inside each neighborhood
@@ -184,9 +192,11 @@ def build(cfg, tracts, acs, blocks, parks, walk, facilities, athletes, participa
     in_park = gpd.sjoin(facilities[["geometry"]], parks[["geometry"]], predicate="within").index.unique()
     log(f"{len(in_park):,} of {len(facilities):,} OSM sports facilities are inside public parks")
     facilities = facilities.loc[in_park]
-    facilities = facilities.assign(nid=assign_points(facilities, nb, crs)).dropna(subset=["nid"])
+    # Schools and facilities count only if they are strictly inside a neighborhood:
+    # no snapping, or schools just across the city/county line get pulled in.
+    facilities = facilities.assign(nid=assign_points(facilities, nb, crs, snap_m=0)).dropna(subset=["nid"])
     fac_count = facilities.groupby(facilities["nid"].astype(int)).size()
-    athletes = athletes.assign(nid=assign_points(athletes, nb, crs))
+    athletes = athletes.assign(nid=assign_points(athletes, nb, crs, snap_m=0))
     athletes = athletes[athletes["nid"].notna()].copy()
     athletes["nid"] = athletes["nid"].astype(int)
     pros = athletes.groupby("nid").size()
@@ -254,5 +264,6 @@ def build(cfg, tracts, acs, blocks, parks, walk, facilities, athletes, participa
                        "recent_birth_year": RECENT_BIRTH_YEAR,
                        "remote_park_designations": sorted(REMOTE_PARK_DESIGNATIONS)},
         "stats_sample": int(len(s)),
+        "_expected_pop": int(round(summary_expected_pop)),
     }
     return nb, athletes, summary

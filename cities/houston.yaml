@@ -1,0 +1,32 @@
+# Houston: the City of Houston's 88 official Super Neighborhoods. The city
+# spans three counties, so tracts from all three are clipped to the
+# Super Neighborhood boundaries.
+slug: houston
+name: City of Houston
+short_name: Houston
+description: >
+  Census tracts inside the City of Houston, grouped into its 88 official
+  Super Neighborhoods.
+
+state_fips: "48"
+county_fips: ["201", "157", "339"]   # Harris, Fort Bend, Montgomery
+acs_year: 2024
+
+neighborhoods:
+  type: arcgis
+  url: https://mycity2.houstontx.gov/gisweb02/rest/services/HoustonMap/Administrative_Boundary/MapServer/3
+  name_field: SNBNAME
+  title_case: true
+  name_fixes:
+    "Iah / Airport Area": "IAH / Airport Area"
+    "Greater Ost / South Union": "Greater OST / South Union"
+  clip_tracts: true
+  source: City of Houston Planning & Development – Super Neighborhoods
+
+participation:
+  state_fips: "48"
+  nsch_years: [2024, 2025]
+
+map:
+  center: [29.76, -95.39]
+  zoom: 10

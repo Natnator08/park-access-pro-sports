@@ -9,7 +9,7 @@ A static website that tracks park access in low-income neighborhoods and follows
   correlation tested, in plain language.
 - **Methodology** (`methodology.html`): sources, stand-ins, and caveats.
 
-Cities built so far: **Los Angeles County** (343 neighborhoods) and **Chicago** (77 community areas).
+Cities built so far: **Los Angeles County** (343 neighborhoods), **Chicago** (77 community areas), and **Houston** (88 Super Neighborhoods).
 
 ## Run it locally
 
@@ -36,7 +36,7 @@ totals, plausible ranges, athletes matched to neighborhoods) and refuses to writ
 
 1. Copy `cities/los-angeles.yaml` to `cities/<slug>.yaml` and set the state/county FIPS codes, the
    neighborhood boundary source (`arcgis`, `geojson`, or `tracts`), and the map center.
-   If the city is smaller than its county, set `clip_tracts: true` (see `cities/chicago.yaml`).
+   If the city is smaller than its county, set `clip_tracts: true` (see `cities/chicago.yaml`); a city spanning several counties lists them all (see `cities/houston.yaml`).
 2. Run `.venv/bin/python pipeline/build_all.py --city <slug>`.
 
 The new city appears in the site's city picker automatically. No frontend changes are needed.
