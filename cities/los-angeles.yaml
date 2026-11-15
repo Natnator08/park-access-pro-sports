@@ -1,0 +1,40 @@
+# City definition. To add a city, copy this file, change the values, and run:
+#   .venv/bin/python pipeline/build_all.py --city <slug>
+slug: los-angeles
+name: Los Angeles County
+short_name: Los Angeles
+description: >
+  All 2,400+ census tracts in Los Angeles County, grouped into the county's
+  official "Cities and Communities" statistical areas.
+
+# Census geography: which state and counties make up this "city".
+state_fips: "06"
+county_fips: ["037"]
+
+# ACS 5-year release year (bulk summary files, no API key needed).
+acs_year: 2024
+
+# Optional [west, south, east, north]. If omitted, computed from the tracts.
+# Overridden here to leave out the Channel Islands (mostly ocean in the query box).
+bbox: [-118.95, 33.70, -117.64, 34.83]
+
+# Neighborhood boundaries used for display. Supported types:
+#   arcgis  – an ArcGIS REST layer (url, name_field, optional where)
+#   geojson – a URL to a GeoJSON file (url, name_field)
+#   tracts  – no neighborhoods; show census tracts directly
+neighborhoods:
+  type: arcgis
+  url: https://public.gis.lacounty.gov/public/rest/services/LACounty_Dynamic/Political_Boundaries/MapServer/23
+  name_field: LABEL
+  where: "Feat_Type = 'Land'"
+  source: LA County Board of Supervisors – Countywide Statistical Areas
+
+# Youth sports participation comes from the National Survey of Children's
+# Health for this state, by household income relative to the poverty line.
+participation:
+  state_fips: "06"
+  nsch_years: [2024, 2025]
+
+map:
+  center: [34.05, -118.25]
+  zoom: 10

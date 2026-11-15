@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Park Access → Pro Sports</title>
+  <meta name="description" content="Tracking park access in low-income neighborhoods and how it connects to youth sports and professional athletes.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Park Access → Pro Sports</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="city.html" data-city-link>Map</a>
+      <a href="analysis.html" data-city-link>Analysis</a>
+      <a href="methodology.html" data-city-link>Methodology</a>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <h1>Where kids can play, and who goes pro</h1>
+    <p class="lede">This site tracks how much park space and how many sports facilities kids in low-income
+      neighborhoods actually have. It then follows the path from park access, to youth sports, to the
+      professional leagues.</p>
+
+    <div class="path" aria-label="The three steps this site tracks">
+      <div class="card path-step"><div class="step-n">Step 1</div><h3>Park access</h3>
+        <p class="small muted">Can kids walk to a park? How much park land is there per resident, and how many courts and fields per child?</p></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="card path-step"><div class="step-n">Step 2</div><h3>Youth sports</h3>
+        <p class="small muted">What share of kids play on a team or take sports lessons? Estimated from a national survey by family income.</p></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="card path-step"><div class="step-n">Step 3</div><h3>Going pro</h3>
+        <p class="small muted">How many NBA, WNBA, NFL, MLB, MLS, NWSL and NHL players went to high school in the neighborhood?</p></div>
+    </div>
+
+    <div id="headline"></div>
+
+    <h2>Cities</h2>
+    <div class="grid grid-3" id="cities"><p class="muted">Loading…</p></div>
+
+    <div class="callout caution" style="margin-top:2rem">
+      <strong>A note on what this can show.</strong> No dataset follows kids from their neighborhood park to a pro
+      roster, so this site uses careful stand-ins and reports patterns, not proof. Every number links back to a
+      public source on the <a href="methodology.html">Methodology</a> page.
+    </div>
+  </main>
+  <footer class="site-footer">Built from public data: U.S. Census Bureau, Trust for Public Land ParkServe®, OpenStreetMap, Wikidata, and the National Survey of Children's Health.</footer>
+
+  <script type="module">
+    import { loadCities, fmt, fmtInt, escapeHtml, showError, setupCityNav } from "./js/data.js";
+    try {
+      const cities = await loadCities();
+      setupCityNav(cities, cities[0].slug);
+      document.getElementById("cities").innerHTML = cities.map((c) => {
+        const lo = c.lowest_income_group, hi = c.highest_income_group;
+        return `<a class="card city-card" href="city.html?city=${encodeURIComponent(c.slug)}">
+          <h3>${escapeHtml(c.name)}</h3>
+          <p class="small muted">${fmtInt(c.totals.neighborhoods)} neighborhoods · ${fmtInt(c.totals.pop)} residents</p>
+          <div class="stat"><span class="stat-label">Park courts &amp; fields per 1,000 kids</span>
+            <span class="stat-value">${fmt(lo.facilities_per_1k_kids, "dec1")} <span class="muted" style="font-size:1rem;font-weight:400">vs</span> ${fmt(hi.facilities_per_1k_kids, "dec1")}</span>
+            <span class="stat-note">lowest- vs highest-income neighborhoods</span></div>
+          <p class="small" style="margin:.75rem 0 0">Open the map →</p></a>`;
+      }).join("");
+      const c = cities[0], lo = c.lowest_income_group, hi = c.highest_income_group;
+      document.getElementById("headline").innerHTML = `<section class="card" aria-label="Headline finding">
+        <div class="stat-label">In ${escapeHtml(c.short_name)}, kids in the lowest-income neighborhoods have</div>
+        <div class="hero-figure">${(hi.park_acres_per_1k / lo.park_acres_per_1k).toFixed(0)}× less park land</div>
+        <p style="max-width:62ch">per resident than kids in the highest-income neighborhoods
+          (${fmt(lo.park_acres_per_1k, "dec1")} vs ${fmt(hi.park_acres_per_1k, "dec1")} acres per 1,000 people), even though
+          ${Math.round(lo.walk_access_pct * 100)}% of them live within a 10-minute walk of a park.
+          <a href="analysis.html?city=${encodeURIComponent(c.slug)}">See the full analysis →</a></p></section>`;
+    } catch (err) { showError(document.getElementById("cities"), err); }
+  </script>
+</body>
+</html>

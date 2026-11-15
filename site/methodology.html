@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Methodology · Park Access to Pro Sports</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Park Access → Pro Sports</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="city.html" data-city-link>Map</a>
+      <a href="analysis.html" data-city-link>Analysis</a>
+      <a href="methodology.html" data-city-link aria-current="page">Methodology</a>
+    </nav>
+    <label class="city-switch"><span class="visually-hidden">City</span><select id="city-select"></select></label>
+  </header>
+
+  <main id="main" class="page" style="max-width:820px">
+    <h1>Methodology</h1>
+    <p class="lede">How every number on this site is made, what it stands in for, and where it can mislead.</p>
+
+    <div class="callout">
+      <strong>The core limitation.</strong> No public dataset records which park a child played in and whether
+      that child later went pro. This site connects the steps using neighborhood-level stand-ins, so it can show
+      <em>patterns</em> (for example, "neighborhoods with more park courts produce more pros"), not
+      <em>causes</em>.
+    </div>
+
+    <h2>Geography</h2>
+    <p>The basic unit is the <strong>2020 census block</strong>. Each populated block is placed in a neighborhood
+      using its interior point. Neighborhoods for this city come from: <span id="nb-source"></span>.
+      Income and child counts come from census tracts (ACS <span class="acs-years"></span>). Each tract's
+      counts are split across its blocks in proportion to their 2020 population, then added up by neighborhood.
+      Neighborhoods with fewer than 100 residents (airports, parks, industrial land) are left out.</p>
+
+    <h2>Step 1 · Park access</h2>
+    <dl>
+      <dt><strong>Residents within a 10-minute walk of a park</strong></dt>
+      <dd><p>The share of residents whose census block falls inside a
+        <a href="https://www.tpl.org/parkserve">Trust for Public Land ParkServe®</a> 10-minute-walk service area.
+        These areas follow the real street and path network (about half a mile), not a straight-line circle.</p></dd>
+      <dt><strong>Park acres per 1,000 residents</strong></dt>
+      <dd><p>Acres of publicly accessible ParkServe parkland inside the neighborhood, per 1,000 residents.
+        National forests, national recreation areas, wildlife refuges and state parks
+        (<span id="remote"></span>) are excluded. They are huge, and they would make the neighborhoods next
+        to them look park-rich even when kids there have few nearby parks.</p></dd>
+      <dt><strong>Park courts &amp; fields per 1,000 kids</strong></dt>
+      <dd><p>Sports pitches, courts, tracks and sports centers mapped in
+        <a href="https://www.openstreetmap.org/">OpenStreetMap</a> that sit <em>inside</em> a public park, per 1,000
+        residents under 18. School fields are deliberately excluded: athletes are placed by their high
+        school, so counting school fields would link the two by construction. OpenStreetMap is
+        volunteer-mapped, so coverage may be uneven between neighborhoods.</p></dd>
+    </dl>
+
+    <h2>Step 2 · Youth sports participation (estimated)</h2>
+    <p>The <a href="https://www.census.gov/programs-surveys/nsch.html">National Survey of Children's Health</a>
+      asks parents whether their child (ages 6–17) played on a sports team or took sports lessons in the past
+      year. Using the public microdata and survey weights (<span id="nsch-years"></span>), we calculate the
+      participation rate for each family-income bracket in this state:</p>
+    <div class="table-wrap card"><table id="nsch-table"></table></div>
+    <p style="margin-top:1rem">Each neighborhood's estimate applies those rates to its own mix of kids by income bracket
+      (ACS table B17024). <strong>This estimate is modeled from income</strong>, so it rises with income by design.
+      It shows how many kids we'd <em>expect</em> to play, not a local count. Its relationship to income is
+      not reported as a finding.</p>
+
+    <h2>Step 3 · Going pro</h2>
+    <p>Pro athletes come from <a href="https://www.wikidata.org/">Wikidata</a> (public domain). An athlete counts
+      if they played for a team in the NBA, WNBA, NFL, MLB, MLS, NWSL or NHL and Wikidata lists a high school
+      for them inside this area. They are placed at that high school's location.</p>
+    <ul>
+      <li><strong>High school is a stand-in for home.</strong> Public high schools mostly draw from nearby
+        neighborhoods. Private schools, especially sports powerhouses, recruit from much farther away. That's
+        why there's a "public high schools only" version of every athlete measure.</li>
+      <li><strong>Wikidata is incomplete.</strong> Recent, well-known players are better covered than older or
+        short-career players, and not every player's high school is recorded.</li>
+      <li><strong>Eras differ.</strong> Athletes born decades ago grew up in neighborhoods that may look very
+        different today. The "born <span class="recent-year"></span>+" measure keeps only recent generations.</li>
+      <li><strong>Small numbers.</strong> A single athlete can swing the rate for a small neighborhood.
+        Neighborhoods under <span class="min-reliable"></span> residents are faded on the map, and those under
+        <span class="min-stats"></span> are left out of the correlations.</li>
+      <li><strong>Data errors are filtered where we can detect them.</strong> For example, schools whose federal
+        (NCES) ID points to another state are dropped, since their map coordinates are wrong.</li>
+    </ul>
+
+    <h2>Statistics</h2>
+    <p>Relationships use <strong>Spearman rank correlation</strong> across neighborhoods. It's robust to the extreme
+      values common in per-capita rates. Because park access and pro athletes could both just track wealth, we
+      also report <strong>partial correlations controlling for median household income</strong>: the relationship
+      left after removing what income explains. Income groups split neighborhoods into five bands of roughly
+      equal population.</p>
+
+    <h2>Sources</h2>
+    <ul>
+      <li>U.S. Census Bureau, American Community Survey 5-year estimates (<span class="acs-years"></span>), tables B01003, B19013, B17024. Downloaded from the table-based summary files, so no API key is needed.</li>
+      <li>U.S. Census Bureau, 2020 Census block populations (TIGERweb) and cartographic boundary tracts.</li>
+      <li>Trust for Public Land, ParkServe® park boundaries and 10-minute-walk service areas.</li>
+      <li>OpenStreetMap contributors (ODbL), via the Overpass API.</li>
+      <li>Wikidata (CC0).</li>
+      <li>Health Resources and Services Administration &amp; U.S. Census Bureau, National Survey of Children's Health, public-use topical files.</li>
+    </ul>
+    <p class="muted small" id="built"></p>
+  </main>
+
+  <script type="module">
+    import { currentCity, setupCityNav, loadCity, fmt, fmtInt, escapeHtml, showError } from "./js/data.js";
+    try {
+      const { city, cities } = await currentCity();
+      setupCityNav(cities, city.slug);
+      const { summary: s } = await loadCity(city.slug);
+      const set = (sel, v) => document.querySelectorAll(sel).forEach((e) => (e.textContent = v));
+      set("#nb-source", s.neighborhood_source);
+      set(".acs-years", `${s.acs_year - 4}–${s.acs_year}`);
+      set("#remote", s.thresholds.remote_park_designations.join(", "));
+      set(".recent-year", s.thresholds.recent_birth_year);
+      set(".min-reliable", fmtInt(s.thresholds.min_pop_reliable));
+      set(".min-stats", fmtInt(s.thresholds.min_pop_for_stats));
+      const p = s.participation;
+      set("#nsch-years", p.years.join(" and "));
+      document.getElementById("nsch-table").innerHTML = `<thead><tr><th>Family income</th><th class="n">Kids in organized sports</th>
+        <th class="n">95% range</th><th class="n">Survey kids</th><th class="n">U.S. rate</th></tr></thead><tbody>${
+        Object.values(p.brackets).map((b) => `<tr><td>${escapeHtml(b.label)}${b.scope === "national" ? " <span class='badge'>national rate used</span>" : ""}</td>
+          <td class="n">${fmt(b.rate, "pct")}</td><td class="n">${fmt(b.ci95[0], "pct")}–${fmt(b.ci95[1], "pct")}</td>
+          <td class="n">${fmtInt(b.n)}</td><td class="n">${fmt(b.national_rate, "pct")}</td></tr>`).join("")}</tbody>`;
+      document.getElementById("built").textContent = `${s.city.name} data built ${s.built}.`;
+    } catch (err) { showError(document.getElementById("main"), err); }
+  </script>
+</body>
+</html>

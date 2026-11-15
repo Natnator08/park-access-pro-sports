@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analysis · Park Access to Pro Sports</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Park Access → Pro Sports</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="city.html" data-city-link>Map</a>
+      <a href="analysis.html" data-city-link aria-current="page">Analysis</a>
+      <a href="methodology.html" data-city-link>Methodology</a>
+    </nav>
+    <label class="city-switch"><span class="visually-hidden">City</span><select id="city-select"></select></label>
+  </header>
+
+  <main id="main" class="page">
+    <h1 id="title">Analysis</h1>
+    <p class="lede" id="lede"></p>
+
+    <section aria-labelledby="h-headline" class="card" id="headline-card">
+      <h2 id="h-headline" class="visually-hidden">Headline</h2>
+    </section>
+
+    <section aria-labelledby="h-path">
+      <h2 id="h-path">The whole path, by neighborhood income</h2>
+      <p class="muted">Neighborhoods are split into five groups by median household income, each holding about
+        one fifth of residents. Each chart compares one step of the path across the groups.</p>
+      <div class="multiples" id="multiples"></div>
+      <details style="margin-top:1rem"><summary>Show these numbers as a table</summary>
+        <div class="table-wrap card" id="groups-table" style="margin-top:.5rem"></div></details>
+    </section>
+
+    <section aria-labelledby="h-scatter">
+      <h2 id="h-scatter">Does park access line up with pro athletes?</h2>
+      <p class="muted">One dot per neighborhood (only those with at least <span id="min-pop"></span> residents).
+        Hover over a dot for details.</p>
+      <div class="card">
+        <div class="chart-controls">
+          <label>Park measure (across)
+            <select id="x-select"></select></label>
+          <label>Pro athlete measure (up)
+            <select id="y-select"></select></label>
+        </div>
+        <div class="legend-inline" id="scatter-legend" aria-label="Income group legend"></div>
+        <div class="chart-box" id="scatter"></div>
+        <p id="scatter-reading" class="callout" style="margin-top:1rem"></p>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-corr">
+      <h2 id="h-corr">Every relationship we tested</h2>
+      <p class="muted">Spearman rank correlations across neighborhoods: −1 is a perfect opposite trend,
+        0 is no relationship, +1 is a perfect matching trend. "After accounting for income" removes the part of
+        the relationship explained by neighborhood income.</p>
+      <div class="card"><ul class="corr-list" id="corr-list"></ul></div>
+      <div class="callout caution" style="margin-top:1rem">
+        <strong>Correlation is not causation.</strong> These are neighborhood-level patterns built from stand-in measures.
+        They can't show that building a court would produce a pro athlete. See <a href="methodology.html" data-city-link>Methodology</a>
+        for what each number can and can't tell you.
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer" id="footer"></footer>
+  <script type="module" src="js/charts.js"></script>
+</body>
+</html>
