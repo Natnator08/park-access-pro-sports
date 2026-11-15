@@ -20,6 +20,9 @@
   --seq-1: #cde2fb; --seq-2: #86b6ef; --seq-3: #3987e5; --seq-4: #1c5cab; --seq-5: #0d366b;
   /* ordinal ramp for income groups (starts at step 250 so every step clears 2:1) */
   --ord-1: #86b6ef; --ord-2: #5598e7; --ord-3: #2a78d6; --ord-4: #1c5cab; --ord-5: #0d366b;
+  /* categorical slots in fixed order (validated palette) */
+  --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
+  --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --cat-8: #e34948;
   --font: system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 10px;
 }
@@ -44,6 +47,8 @@
     /* on a dark surface "low" recedes toward the surface: dark -> light */
     --seq-1: #104281; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #6da7ec; --seq-5: #b7d3f6;
     --ord-1: #184f95; --ord-2: #256abf; --ord-3: #3987e5; --ord-4: #6da7ec; --ord-5: #b7d3f6;
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+    --cat-5: #d55181; --cat-6: #0ca30c; --cat-7: #9085e9; --cat-8: #e66767;
   }
 }
 
@@ -131,11 +136,23 @@ button:hover { background: var(--surface-2); }
   display: grid; grid-template-columns: 300px 1fr 360px;
   height: calc(100vh - 57px); min-height: 560px;
 }
-.sidebar, .detail { overflow-y: auto; background: var(--surface); padding: 1rem 1.25rem; }
+/* Map page on desktop: the page is exactly the window, so it never scrolls. The
+   header and map stay put and only the side panels scroll, each inside itself. */
+body.map-page { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+body.map-page .site-header { flex: none; }
+body.map-page .map-layout { flex: 1 1 auto; height: auto; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+.map-layout > * { min-height: 0; }
+/* position: relative keeps absolutely positioned children (e.g. screen-reader-only
+   labels) inside the scrolling panel instead of stretching the whole page. */
+.sidebar, .detail { position: relative; overflow-y: auto; overscroll-behavior: contain; background: var(--surface); padding: 1rem 1.25rem; }
+#table-view { overscroll-behavior: contain; }
 .sidebar { border-right: 1px solid var(--border); }
 .detail { border-left: 1px solid var(--border); }
 #map { height: 100%; background: var(--surface-2); }
 @media (max-width: 1100px) {
+  /* Stacked layout on smaller screens: let the page scroll normally again. */
+  body.map-page { height: auto; display: block; overflow: visible; }
+  body.map-page .map-layout { grid-template-rows: none; }
   .map-layout { grid-template-columns: 1fr; height: auto; }
   #map { height: 70vh; }
   .sidebar, .detail { border: 0; }
@@ -230,3 +247,21 @@ tr.clickable:hover { background: var(--surface-2); }
 .corr-strength { font-weight: 600; }
 
 footer.site-footer { color: var(--muted); font-size: .85rem; padding: 2rem 1.5rem; text-align: center; }
+
+/* demographics: thin segmented bars (2px surface gap between parts) + legend */
+.seg-bar { display: flex; gap: 2px; height: 8px; margin: .45rem 0 .5rem; }
+.seg-bar span { border-radius: 2px; min-width: 2px; }
+.seg-bar span:first-child { border-radius: 4px 2px 2px 4px; }
+.seg-bar span:last-child { border-radius: 2px 4px 4px 2px; }
+.seg-legend { list-style: none; padding: 0; margin: 0 0 .5rem; display: flex; flex-wrap: wrap; gap: .25rem .9rem; font-size: .82rem; color: var(--text-2); }
+.seg-legend li { display: inline-flex; align-items: center; gap: .35rem; }
+.seg-legend strong { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
+.demo-block { padding: .5rem 0; border-bottom: 1px solid var(--grid); }
+.demo-block:last-child { border-bottom: 0; }
+.demo-title { font-size: .9rem; color: var(--text-2); display: flex; justify-content: space-between; gap: .5rem; }
+.demo-rows { display: flex; flex-direction: column; gap: .6rem; }
+.demo-row { display: grid; grid-template-columns: 7.5rem 1fr; gap: .75rem; align-items: start; }
+.demo-row .seg-bar { margin-top: .4rem; }
+@media (max-width: 640px) { .demo-row { grid-template-columns: 1fr; } }
+.layer-group-title { font-size: .75rem; font-weight: 600; color: var(--muted); margin: .7rem .5rem .15rem; }
+.layer-group-title:first-child { margin-top: 0; }

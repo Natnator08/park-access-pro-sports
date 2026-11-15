@@ -1,15 +1,18 @@
-# Houston: the City of Houston's 88 official Super Neighborhoods. The city
-# spans three counties, so tracts from all three are clipped to the
-# Super Neighborhood boundaries.
+# Houston + greater Katy.
+#  * City of Houston: its 88 official Super Neighborhoods.
+#  * Greater Katy: the Katy ISD area west of the city. Parts already inside
+#    Houston's city limits stay in their Super Neighborhood; the rest is shown
+#    by census tract, named after the community covering most of it.
+# Tracts from all four counties are clipped to these boundaries.
 slug: houston
-name: City of Houston
+name: Houston + Greater Katy
 short_name: Houston
 description: >
-  Census tracts inside the City of Houston, grouped into its 88 official
-  Super Neighborhoods.
+  The City of Houston's 88 official Super Neighborhoods, plus the greater Katy
+  area (Katy ISD) to the west, shown by census tract.
 
 state_fips: "48"
-county_fips: ["201", "157", "339"]   # Harris, Fort Bend, Montgomery
+county_fips: ["201", "157", "339", "473"]   # Harris, Fort Bend, Montgomery, Waller
 acs_year: 2024
 
 neighborhoods:
@@ -21,12 +24,21 @@ neighborhoods:
     "Iah / Airport Area": "IAH / Airport Area"
     "Greater Ost / South Union": "Greater OST / South Union"
   clip_tracts: true
-  source: City of Houston Planning & Development – Super Neighborhoods
+  area_name: City of Houston
+  source: City of Houston Planning & Development – Super Neighborhoods; Census tracts for greater Katy
+
+extra_areas:
+  - name: Greater Katy
+    boundary:            # Katy ISD, from the Census Bureau's school district file
+      url: https://www2.census.gov/geo/tiger/TIGER2024/UNSD/tl_2024_48_unsd.zip
+      field: GEOID
+      value: "4825170"
+    name_by_place: true
 
 participation:
   state_fips: "48"
   nsch_years: [2024, 2025]
 
 map:
-  center: [29.76, -95.39]
+  center: [29.77, -95.52]
   zoom: 10

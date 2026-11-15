@@ -34,14 +34,39 @@
       using its interior point. Neighborhoods for this city come from: <span id="nb-source"></span>.
       Income and child counts come from census tracts (ACS <span class="acs-years"></span>). Each tract's
       counts are split across its blocks in proportion to their 2020 population, then added up by neighborhood.
-      Neighborhoods with fewer than 100 residents (airports, parks, industrial land) are left out.</p>
+      Neighborhoods with fewer than 100 residents (airports, parks, industrial land) are left out.
+      Where an area has no official neighborhoods (such as greater Katy, shown with Houston), census tracts are used instead.
+      Katy's area is the Katy ISD school district boundary; parts of it inside Houston's city limits stay in their
+      Houston Super Neighborhood so no one is counted twice. Each is named after
+      the Census-recognized city or community covering most of it, or "Near …" the closest community center when it's
+      mostly unincorporated.</p>
+
+    <h2>Who lives here: demographics</h2>
+    <p>Race and ethnicity, age, and sex come from the American Community Survey 5-year estimates
+      (<span class="acs-years"></span>, tables B03002, B01001 and B01002). They are split from tracts onto
+      neighborhoods with the same block-population weighting as income.</p>
+    <ul>
+      <li><strong>Race and ethnicity</strong> use the Census's mutually exclusive groups: Hispanic or Latino
+        residents of any race, then non-Hispanic White, Black, Asian, Native American (American Indian and Alaska
+        Native), and Pacific Islander (Native Hawaiian and Other Pacific Islander) residents. "Other or
+        multiracial" combines non-Hispanic residents of some other race or two or more races. Groups add up to 100%.</li>
+      <li><strong>Age</strong> groups (under 18, 18–34, 35–64, 65+) are counts from table B01001. Neighborhood
+        <strong>median age</strong> is approximate: a population-weighted average of tract medians, since medians
+        can't be added together exactly.</li>
+      <li><strong>Sex</strong>: the ACS asks whether each person is male or female. It doesn't measure gender
+        identity, so the site reports "sex (as reported to the Census)".</li>
+      <li>These are survey estimates with margins of error, which are larger for small neighborhoods and small groups.
+        Demographics are shown for context. They aren't used in the park or athlete calculations.</li>
+    </ul>
 
     <h2>Step 1 · Park access</h2>
     <dl>
       <dt><strong>Residents within a 10-minute walk of a park</strong></dt>
       <dd><p>The share of residents whose census block falls inside a
         <a href="https://www.tpl.org/parkserve">Trust for Public Land ParkServe®</a> 10-minute-walk service area.
-        These areas follow the real street and path network (about half a mile), not a straight-line circle.</p></dd>
+        These areas follow the real street and path network (about half a mile), not a straight-line circle.
+        Only parks open to the public count, so private parks, like the HOA parks in many suburban subdivisions,
+        aren't included.</p></dd>
       <dt><strong>Park acres per 1,000 residents</strong></dt>
       <dd><p>Acres of publicly accessible ParkServe parkland inside the neighborhood, per 1,000 residents.
         National forests, national recreation areas, wildlife refuges and state parks
@@ -97,7 +122,7 @@
 
     <h2>Sources</h2>
     <ul>
-      <li>U.S. Census Bureau, American Community Survey 5-year estimates (<span class="acs-years"></span>), tables B01003, B19013, B17024. Downloaded from the table-based summary files, so no API key is needed.</li>
+      <li>U.S. Census Bureau, American Community Survey 5-year estimates (<span class="acs-years"></span>), tables B01003, B19013, B17024, B03002, B01001, B01002. Downloaded from the table-based summary files, so no API key is needed.</li>
       <li>U.S. Census Bureau, 2020 Census block populations (TIGERweb) and cartographic boundary tracts.</li>
       <li>Trust for Public Land, ParkServe® park boundaries and 10-minute-walk service areas.</li>
       <li>OpenStreetMap contributors (ODbL), via the Overpass API.</li>

@@ -6,6 +6,7 @@ export const STEPS = {
   access: "Step 1 · Park access",
   participation: "Step 2 · Youth sports",
   pros: "Step 3 · Going pro",
+  people: "Who lives here",
 };
 
 // Display settings for each metric produced by the pipeline.
@@ -20,7 +21,42 @@ export const METRICS = {
   pros_per_100k: { step: "pros", short: "Pro athletes per 100k residents", fmt: "dec1", better: "high", skewed: true, rate: "pros" },
   pros_public_per_100k: { step: "pros", short: "Pro athletes per 100k (public high schools)", fmt: "dec1", better: "high", skewed: true, rate: "pros_public" },
   pros_recent_per_100k: { step: "pros", short: "Pro athletes per 100k (born 1985+)", fmt: "dec1", better: "high", skewed: true, rate: "pros_recent" },
+  // Demographics (ACS). Not "better" or "worse": shown for context only.
+  pct_hispanic: { step: "people", short: "Hispanic or Latino residents", fmt: "pct" },
+  pct_white: { step: "people", short: "White residents (non-Hispanic)", fmt: "pct" },
+  pct_black: { step: "people", short: "Black residents (non-Hispanic)", fmt: "pct" },
+  pct_asian: { step: "people", short: "Asian residents (non-Hispanic)", fmt: "pct" },
+  pct_0_17: { step: "people", short: "Residents under 18", fmt: "pct" },
+  pct_65p: { step: "people", short: "Residents 65 and older", fmt: "pct" },
+  median_age: { step: "people", short: "Median age (approx.)", fmt: "dec1" },
 };
+
+// Demographic groups in display order. Race/ethnicity groups are mutually exclusive:
+// Hispanic or Latino of any race, then non-Hispanic people by race.
+export const RACE_GROUPS = [
+  ["hispanic", "Hispanic or Latino"], ["white", "White"], ["black", "Black"], ["asian", "Asian"],
+  ["other", "Other or multiracial"], ["native", "Native American"], ["pacific", "Pacific Islander"],
+];
+export const AGE_GROUPS = [["0_17", "Under 18"], ["18_34", "18–34"], ["35_64", "35–64"], ["65p", "65+"]];
+
+/**
+ * A thin segmented bar (one whole split into parts) with a legend that carries the
+ * names and percentages, so identity never relies on color alone.
+ * parts: [{label, value (0-1), color}]
+ */
+export function segmentedBar(parts, ariaLabel) {
+  const shown = parts.filter((p) => p.value > 0);
+  const desc = shown.map((p) => `${p.label} ${Math.round(p.value * 100)}%`).join(", ");
+  return `<div class="seg-bar" role="img" aria-label="${escapeHtml(ariaLabel)}: ${escapeHtml(desc)}">${
+    shown.map((p) => `<span style="flex:${p.value} 1 0;background:${p.color}" title="${escapeHtml(p.label)}: ${fmt(p.value, "pct1")}"></span>`).join("")}</div>
+    <ul class="seg-legend">${parts.map((p) => `<li><span class="swatch-dot" style="background:${p.color}" aria-hidden="true"></span>${escapeHtml(p.label)} <strong>${escapeHtml(fmt(p.value, "pct1"))}</strong></li>`).join("")}</ul>`;
+}
+export function raceParts(get) {
+  return RACE_GROUPS.map(([k, label], i) => ({ label, value: get(k) ?? 0, color: `var(--cat-${i + 1})` }));
+}
+export function ageParts(get) {
+  return AGE_GROUPS.map(([k, label], i) => ({ label, value: get(k) ?? 0, color: `var(--ord-${i + 2})` }));
+}
 
 const nf0 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
@@ -31,6 +67,7 @@ export function fmt(value, kind) {
   switch (kind) {
     case "money": return money.format(value);
     case "pct": return `${Math.round(value * 100)}%`;
+    case "pct1": return value > 0 && value < 0.01 ? "<1%" : `${Math.round(value * 100)}%`;
     case "dec1": return nf1.format(value);
     default: return nf0.format(value);
   }

@@ -1,6 +1,6 @@
 import {
   METRICS, STEPS, currentCity, setupCityNav, loadCity, loadParks, fmt, fmtMetric, fmtInt,
-  median, escapeHtml, showError,
+  median, escapeHtml, showError, segmentedBar, raceParts, ageParts,
 } from "./data.js?v=__VERSION__";
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -9,10 +9,13 @@ const RAMP = [1, 2, 3, 4, 5].map((i) => css(`--seq-${i}`));
 const MAP_LAYERS = [
   "median_income", "walk_access_pct", "park_acres_per_1k", "facilities_per_1k_kids",
   "est_participation", "pros_per_100k", "pros_public_per_100k", "pros_recent_per_100k",
+  "pct_hispanic", "pct_white", "pct_black", "pct_asian", "pct_0_17", "pct_65p", "median_age",
 ];
+const LAYER_GROUPS = ["income", "access", "participation", "pros", "people"];
 
 const state = { metric: "facilities_per_1k_kids", selected: null, sortKey: "name", sortDir: 1, maxSchool: 0 };
 let data, features, map, geoLayer, athleteLayer, parkLayer, medians;
+let multiArea = false; // true when a city combines areas (e.g. Houston + greater Katy)
 
 // ------------------------------------------------------------------ class breaks
 function computeBreaks(values) {
@@ -174,6 +177,18 @@ function meterRow(key, p) {
   </div>`;
 }
 
+/** Race/ethnicity, age, and sex for one neighborhood (ACS estimates). */
+function peopleBlock(p) {
+  if (p.pct_hispanic === null || p.pct_hispanic === undefined) return `<p class="small muted">No demographic data.</p>`;
+  return `
+    <div class="demo-block"><div class="demo-title"><span>Race and ethnicity</span></div>
+      ${segmentedBar(raceParts((k) => p[`pct_${k}`]), "Race and ethnicity")}</div>
+    <div class="demo-block"><div class="demo-title"><span>Age</span><span>median ${fmt(p.median_age, "dec1")} (approx.)</span></div>
+      ${segmentedBar(ageParts((k) => p[`pct_${k}`]), "Age")}</div>
+    <div class="demo-block"><div class="demo-title"><span>Sex (as reported to the Census)</span>
+      <span>${fmt(p.pct_female, "pct")} female · ${fmt(p.pct_male, "pct")} male</span></div></div>`;
+}
+
 function renderDetail(nid) {
   const f = features.find((x) => x.properties.nid === nid);
   const el = document.getElementById("detail");
@@ -185,9 +200,15 @@ function renderDetail(nid) {
       <div class="meta">${escapeHtml(a.leagues.join(", "))}${a.birth_year ? ` · born ${a.birth_year}` : ""} · ${escapeHtml(a.school)} (${a.school_type})</div></li>`).join("");
   el.innerHTML = `
     <h2>${escapeHtml(p.name)}</h2>
+    ${multiArea ? `<span class="badge">${escapeHtml(p.area)}</span>` : ""}
     <p class="small muted">${fmtInt(p.pop)} residents · ${fmtInt(p.kids0_17)} kids under 18
       ${p.reliable ? "" : `<br><span class="badge">Small population: per-capita athlete rates are unreliable</span>`}</p>
-    ${["income", "access", "participation", "pros"].map((s) => `
+    ${["income"].map((s) => `
+      <div class="step-header">${STEPS[s]}</div>
+      <div class="path-v">${group(s).map((k) => meterRow(k, p)).join("")}</div>`).join("")}
+    <div class="step-header">${STEPS.people}</div>
+    ${peopleBlock(p)}
+    ${["access", "participation", "pros"].map((s) => `
       <div class="step-header">${STEPS[s]}</div>
       <div class="path-v">${group(s).map((k) => meterRow(k, p)).join("")}</div>`).join("")}
     <div class="step-header">Pro athletes from high schools here (${ath.length})</div>
@@ -259,7 +280,7 @@ function renderTable() {
     return `<th class="${k === "name" ? "" : "n"}" aria-sort="${sorted}"><button data-sort="${k}">${escapeHtml(COL_LABEL[k] ?? METRICS[k].short)}${sorted === "none" ? "" : sorted === "ascending" ? " ▲" : " ▼"}</button></th>`;
   }).join("");
   const body = rows.map((r) => `<tr class="clickable" tabindex="0" data-nid="${r.nid}">${TABLE_COLS.map((k) =>
-    k === "name" ? `<td>${escapeHtml(r.name)}</td>` : `<td class="n">${COL_LABEL[k] ? fmtInt(r[k]) : fmtMetric(k, r[k])}</td>`).join("")}</tr>`).join("");
+    k === "name" ? `<td>${escapeHtml(r.name)}${multiArea ? `<br><span class="small muted">${escapeHtml(r.area)}</span>` : ""}</td>` : `<td class="n">${COL_LABEL[k] ? fmtInt(r[k]) : fmtMetric(k, r[k])}</td>`).join("")}</tr>`).join("");
   const el = document.getElementById("table-view");
   el.innerHTML = `<h2 style="margin-top:0">All neighborhoods</h2>
     <p class="small muted">Select a column heading to sort it. Select a row (or press Enter on it) to see it on the map.</p>
@@ -291,6 +312,7 @@ async function init() {
   setupCityNav(cities, city.slug);
   data = await loadCity(city.slug);
   features = data.neighborhoods.features;
+  multiArea = new Set(features.map((f) => f.properties.area)).size > 1;
   medians = Object.fromEntries(Object.keys(METRICS).map((k) => [k, median(features.map((f) => f.properties[k]))]));
   const s = data.summary;
 
@@ -299,13 +321,25 @@ async function init() {
   document.getElementById("city-sub").textContent = `${fmtInt(s.totals.neighborhoods)} neighborhoods · ${fmtInt(s.totals.pop)} residents · ${fmtInt(s.totals.pros)} pro athletes`;
 
   // layer radio buttons, grouped by step
-  document.getElementById("layer-options").innerHTML = MAP_LAYERS.map((k) => `
+  document.getElementById("layer-options").innerHTML = LAYER_GROUPS.map((g) => {
+    const keys = MAP_LAYERS.filter((k) => METRICS[k].step === g);
+    return `<div class="layer-group-title">${escapeHtml(STEPS[g])}</div>` + keys.map((k) => `
     <label class="layer-option"><input type="radio" name="layer" value="${k}" ${k === state.metric ? "checked" : ""}>
-      <span>${escapeHtml(METRICS[k].short)}<span class="step-tag">${STEPS[METRICS[k].step]}</span></span></label>`).join("");
+      <span>${escapeHtml(METRICS[k].short)}</span></label>`).join("");
+  }).join("");
   document.querySelectorAll("input[name=layer]").forEach((r) => r.addEventListener("change", () => { state.metric = r.value; restyle(); }));
 
   // map
   map = L.map("map", { zoomControl: true, maxZoom: 16 }).setView(s.city.map.center, s.city.map.zoom);
+  // When the layout stacks (narrow windows) the page scrolls, so the scroll wheel
+  // shouldn't get trapped zooming the map. Clicking the map turns wheel zoom on;
+  // moving the pointer away turns it off again.
+  const stacked = matchMedia("(max-width: 1100px)");
+  const resetWheel = () => (stacked.matches ? map.scrollWheelZoom.disable() : map.scrollWheelZoom.enable());
+  resetWheel();
+  stacked.addEventListener("change", resetWheel);
+  map.on("click", () => map.scrollWheelZoom.enable());
+  map.on("mouseout", resetWheel);
   // Esri gray canvas basemap (no API key). Place-name labels go in a pane above
   // the colored neighborhoods so they stay readable.
   const tone = dark ? "Dark" : "Light";

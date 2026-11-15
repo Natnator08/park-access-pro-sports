@@ -17,7 +17,12 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from common import arcgis_query, features_to_gdf, log, raw_dir
+import shapely
+
+import demographics
+from pathlib import Path
+
+from common import arcgis_query, download, features_to_gdf, log, raw_dir
 from fetch_participation import BRACKETS
 
 MIN_POP_RELIABLE = 10_000     # below this, per-capita athlete rates are flagged
@@ -67,19 +72,119 @@ def neighborhood_shapes(cfg: dict) -> gpd.GeoDataFrame | None:
     return g
 
 
+def polygonal(geom):
+    """Keep only the area parts of a geometry. Clipping can leave stray points and
+    lines where shapes touch, which the map would draw as markers."""
+    parts = [p for p in shapely.get_parts(geom) if p.geom_type in ("Polygon", "MultiPolygon")]
+    if not parts:
+        return shapely.Polygon()
+    return shapely.union_all(parts)
+
+
+def is_clipped(cfg: dict) -> bool:
+    """True when the city covers only part of its counties (residents outside are excluded)."""
+    return bool(cfg["neighborhoods"].get("clip_tracts") or cfg.get("boundary") or cfg.get("extra_areas"))
+
+
+def boundary_shape(cfg: dict):
+    """The city's outer boundary from cfg['boundary'] (e.g. a school district), or None."""
+    return load_boundary(cfg["boundary"]) if cfg.get("boundary") else None
+
+
+def coverage_shape(cfg: dict):
+    """Everything the city covers: its boundary (or neighborhoods) plus any extra areas."""
+    shape = boundary_shape(cfg)
+    if shape is None:
+        nb = neighborhood_shapes(cfg)
+        shape = nb.union_all() if nb is not None else None
+    for extra in cfg.get("extra_areas", []):
+        b = load_boundary(extra["boundary"])
+        shape = b if shape is None else shape.union(b)
+    return shape
+
+
+def load_boundary(b: dict):
+    """One boundary polygon: {url: <zip/geojson>, field: <attribute>, value: <match>}."""
+    path = download(b["url"], raw_dir() / Path(b["url"]).name)
+    g = gpd.read_file(f"zip://{path}" if str(path).endswith(".zip") else path).to_crs(4326)
+    g = g[g[b["field"]].astype(str) == str(b["value"])]
+    if g.empty:
+        raise ValueError(f"No boundary where {b['field']} == {b['value']}")
+    return g.geometry.make_valid().union_all()
+
+
+def tract_label(geoid: str) -> str:
+    """'48201452103' -> 'Tract 4521.03'."""
+    whole, dec = int(geoid[5:9]), geoid[9:]
+    return f"Tract {whole}" + (f".{dec}" if dec != "00" else "")
+
+
+def name_tracts_by_place(cfg: dict, g: gpd.GeoDataFrame) -> pd.Series:
+    """Name each tract after the Census place (city, town, or community) covering most
+    of it, e.g. 'Cinco Ranch · Tract 6730.12'. Tracts mostly outside any place are
+    'Unincorporated'."""
+    url = f"https://www2.census.gov/geo/tiger/TIGER{cfg['acs_year']}/PLACE/tl_{cfg['acs_year']}_{cfg['state_fips']}_place.zip"
+    places = gpd.read_file(f"zip://{download(url, raw_dir() / Path(url).name)}").to_crs(4326)
+    crs = g.estimate_utm_crs()
+    gp, pp = g.to_crs(crs), places[["NAME", "geometry"]].to_crs(crs)
+    inter = gpd.overlay(gp[["GEOID", "geometry"]], pp, how="intersection", keep_geom_type=True)
+    inter["share"] = inter.area / inter["GEOID"].map(gp.set_index("GEOID").area)
+    best = inter.sort_values("share").groupby("GEOID").last()
+    place = g["GEOID"].map(best["NAME"].where(best["share"] >= 0.5))
+    # Mostly outside any place: name it after the place whose center is nearest
+    # (within 8 km). Centers, not edges, so a big city whose limits snake along
+    # highways (e.g. Houston) doesn't claim every nearby suburb.
+    todo = place.isna()
+    if todo.any():
+        pts = gpd.GeoDataFrame({"GEOID": g.loc[todo, "GEOID"]}, geometry=gp.loc[todo].representative_point(), crs=crs)
+        centers = gpd.GeoDataFrame({"NAME": pp["NAME"]}, geometry=pp.representative_point(), crs=crs)
+        near = gpd.sjoin_nearest(pts, centers, max_distance=8000, distance_col="d")
+        near = near[~near.index.duplicated()]
+        place.loc[near.index] = "Near " + near["NAME"]
+    return place.fillna("Unincorporated") + " · " + g["GEOID"].map(tract_label)
+
+
 def neighborhoods(cfg: dict, tracts: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    g = neighborhood_shapes(cfg)
-    if g is None:
-        g = tracts[["GEOID", "geometry"]].rename(columns={"GEOID": "name"})
-        g["name"] = "Tract " + g["name"].str[5:]
-    # Clip to the city's tracts so neighbors outside the counties are dropped.
-    area = tracts.union_all()
-    g = g[g.intersects(area)].copy()
-    g["geometry"] = g.geometry.intersection(area)
-    g = g[~g.geometry.is_empty].reset_index(drop=True)
+    g = main_neighborhoods(cfg, tracts)
+    g["area"] = cfg["neighborhoods"].get("area_name", cfg["name"])
+    # Extra areas (e.g. greater Katy added to Houston): census tracts inside the
+    # area's boundary, minus anything already covered, so nothing is counted twice.
+    for extra in cfg.get("extra_areas", []):
+        covered = g.union_all()
+        pieces = tracts[["GEOID", "geometry"]].copy()
+        pieces["geometry"] = pieces.geometry.intersection(load_boundary(extra["boundary"])).difference(covered).apply(polygonal)
+        pieces = pieces[~pieces.geometry.is_empty]
+        pieces = pieces[pieces.to_crs(pieces.estimate_utm_crs()).area > 20_000]  # drop slivers along shared edges
+        pieces["name"] = name_tracts_by_place(cfg, pieces) if extra.get("name_by_place") else pieces["GEOID"].map(tract_label)
+        pieces["area"] = extra["name"]
+        log(f"{extra['name']}: {len(pieces)} tract areas added")
+        g = pd.concat([g, pieces[["name", "area", "geometry"]]], ignore_index=True)
+    g = gpd.GeoDataFrame(g, geometry="geometry", crs=4326)
     g.insert(0, "nid", np.arange(len(g)))
     log(f"{len(g):,} neighborhoods")
     return g
+
+
+def main_neighborhoods(cfg: dict, tracts: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    g = neighborhood_shapes(cfg)
+    boundary = boundary_shape(cfg)
+    if g is None:
+        g = tracts[["GEOID", "geometry"]].copy()
+        if boundary is not None:
+            g["geometry"] = g.geometry.intersection(boundary)
+            g = g[~g.geometry.is_empty]
+        if cfg["neighborhoods"].get("name_by_place"):
+            g["name"] = name_tracts_by_place(cfg, g)
+        else:
+            g["name"] = g["GEOID"].map(tract_label)
+        g = g[["name", "geometry"]]
+    # Clip to the city's tracts (and boundary) so areas outside the city are dropped.
+    area = tracts.union_all()
+    if boundary is not None:
+        area = area.intersection(boundary)
+    g = g[g.intersects(area)].copy()
+    g["geometry"] = g.geometry.intersection(area).apply(polygonal)
+    return g[~g.geometry.is_empty].reset_index(drop=True)
 
 
 def assign_points(points: gpd.GeoDataFrame, polys: gpd.GeoDataFrame, crs, snap_m: float = 500) -> pd.Series:
@@ -138,6 +243,7 @@ def income_groups(nb: pd.DataFrame, k: int = 5) -> list[dict]:
             "pros_public_per_100k": round(g["pros_public"].sum() / pop * 1e5, 2),
             "pros_per_100k": round(g["pros"].sum() / pop * 1e5, 2),
             "pros_recent_per_100k": round(g["pros_recent"].sum() / pop * 1e5, 2),
+            "demographics": demographics.composition(g),
         })
     return out
 
@@ -152,7 +258,7 @@ def build(cfg, tracts, acs, blocks, parks, walk, facilities, athletes, participa
     # Each block's share of its tract, computed over ALL the tract's blocks, so a tract
     # that straddles the city limit contributes only the part inside the city.
     blocks["w"] = blocks["pop2020"] / blocks.groupby("tract")["pop2020"].transform("sum")
-    clipped = cfg["neighborhoods"].get("clip_tracts", False)
+    clipped = is_clipped(cfg)
     # For clipped cities, blocks outside the boundary are genuinely outside the city: no snapping.
     blocks["nid"] = assign_points(blocks, nb, crs, snap_m=0 if clipped else 500)
     lost = blocks["nid"].isna()
@@ -168,15 +274,17 @@ def build(cfg, tracts, acs, blocks, parks, walk, facilities, athletes, participa
     rate = {b: participation["brackets"][b]["rate"] for b in BRACKETS}
     acs = acs.copy()
     acs["participants"] = sum(acs[f"kids6_17_{b}"] * rate[b] for b in BRACKETS)
-    count_cols = ["pop", "kids0_17", "kids6_17", "kids_in_poverty", "participants"]
-    b = blocks.join(acs[count_cols + ["median_income"]], on="tract")
+    count_cols = ["pop", "kids0_17", "kids6_17", "kids_in_poverty", "participants", *demographics.COUNT_COLS]
+    b = blocks.join(acs[count_cols + ["median_income", "median_age"]], on="tract")
     for c in count_cols:
         b[c] = b[c] * b["w"]
     b["inc_x_pop"] = b["median_income"] * b["pop"]
     b["pop_with_inc"] = b["pop"].where(b["median_income"].notna(), 0)
+    b["age_x_pop"] = b["median_age"] * b["pop"]
+    b["pop_with_age"] = b["pop"].where(b["median_age"].notna(), 0)
     b["pop_in_walk"] = b["pop2020"].where(b["in_walk"], 0)
     summary_expected_pop = float(b["pop"].sum())
-    agg = b.groupby("nid")[count_cols + ["inc_x_pop", "pop_with_inc", "pop2020", "pop_in_walk"]].sum(min_count=1)
+    agg = b.groupby("nid")[count_cols + ["inc_x_pop", "pop_with_inc", "age_x_pop", "pop_with_age", "pop2020", "pop_in_walk"]].sum(min_count=1)
 
     # ---- parks: acres inside each neighborhood
     nb_p = nb.to_crs(crs)
@@ -223,6 +331,9 @@ def build(cfg, tracts, acs, blocks, parks, walk, facilities, athletes, participa
     nb["pros_recent_per_100k"] = safe(nb["pros_recent"] * 1e5, nb["pop"])
     nb["pros_public_per_100k"] = safe(nb["pros_public"] * 1e5, nb["pop"])
     nb["reliable"] = nb["pop"] >= MIN_POP_RELIABLE
+    # Demographics: race/ethnicity, age, and sex shares, and (approximate) median age.
+    nb = demographics.shares(nb)
+    nb["median_age"] = safe(nb["age_x_pop"], nb["pop_with_age"])
 
     # ---- statistics
     s = nb[nb["pop"] >= MIN_POP_FOR_STATS]
@@ -257,8 +368,9 @@ def build(cfg, tracts, acs, blocks, parks, walk, facilities, athletes, participa
         "est_participation": round(nb["participants"].sum() / nb["kids6_17"].sum(), 4),
         "pros_per_100k": round(nb["pros"].sum() / nb["pop"].sum() * 1e5, 2),
     }
+    city_demographics = demographics.composition(nb)
     summary = {
-        "totals": totals, "income_groups": income_groups(nb), "correlations": correlations,
+        "totals": totals, "demographics": city_demographics, "income_groups": income_groups(nb), "correlations": correlations,
         "partial_correlations": partial, "participation": participation, "metrics": METRICS,
         "thresholds": {"min_pop_reliable": MIN_POP_RELIABLE, "min_pop_for_stats": MIN_POP_FOR_STATS,
                        "recent_birth_year": RECENT_BIRTH_YEAR,

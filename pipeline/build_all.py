@@ -16,6 +16,7 @@ import geopandas as gpd
 import shapely
 
 import build_metrics
+import demographics
 import fetch_athletes
 import fetch_census
 import fetch_parks
@@ -23,7 +24,7 @@ import fetch_participation
 from common import SITE_DATA_DIR, load_city, log, write_json
 
 ROUND = {"median_income": 0, "pop": 0, "kids0_17": 0, "kids6_17": 0, "park_acres": 1,
-         "facilities": 0, "pros": 0, "pros_recent": 0, "pros_public": 0}
+         "facilities": 0, "pros": 0, "pros_recent": 0, "pros_public": 0, "median_age": 1}
 
 
 def _clean(v, nd=4):
@@ -42,7 +43,7 @@ def _geo(g, tolerance):
 
 def write_outputs(cfg, nb, athletes, parks, summary):
     out = SITE_DATA_DIR / cfg["slug"]
-    props = ["nid", "name", "reliable", *ROUND, *build_metrics.METRICS]
+    props = ["nid", "name", "area", "reliable", *ROUND, *build_metrics.METRICS, "median_age", *demographics.SHARES]
     props = list(dict.fromkeys(props))
     nbo = _geo(nb[props + ["geometry"]], 0.0003)
     feats = []
@@ -78,7 +79,8 @@ def write_outputs(cfg, nb, athletes, parks, summary):
     high = summary["income_groups"][-1]
     cities.append({"slug": cfg["slug"], "name": cfg["name"], "short_name": cfg["short_name"],
                    "description": cfg.get("description", ""), "totals": summary["totals"],
-                   "lowest_income_group": low, "highest_income_group": high})
+                   "lowest_income_group": low, "highest_income_group": high,
+                   "demographics": summary["demographics"]})
     write_json(idx_path, sorted(cities, key=lambda c: c["name"]))
     sizes = {p.name: f"{p.stat().st_size / 1e6:.1f} MB" for p in out.iterdir()}
     log(f"wrote {out}: {sizes}")
@@ -97,9 +99,14 @@ def check(cfg, tracts, nb, athletes, summary):
     # the city's blocks; a bigger gap means residents were silently dropped.
     exp = summary["_expected_pop"]
     assert abs(t["pop"] - exp) / exp < 0.02, f"population mismatch {t['pop']:,} vs expected {exp:,}"
-    if not cfg["neighborhoods"].get("clip_tracts"):
+    if not build_metrics.is_clipped(cfg):
         acs_pop = summary["_acs_pop"]
         assert abs(t["pop"] - acs_pop) / acs_pop < 0.02, f"population mismatch {t['pop']:,} vs ACS {acs_pop:,}"
+    d = summary["demographics"]
+    for part in ("race", "age", "sex"):
+        total = sum(d[part].values())
+        assert abs(total - 1) < 0.002, f"{part} shares sum to {total:.4f}, not 1"
+    assert 15 < (d["median_age"] or 0) < 60, f"implausible median age {d['median_age']}"
     log("sanity checks passed")
 
 
@@ -111,11 +118,11 @@ def main():
 
     print("1/5 Census")
     tracts = fetch_census.tracts(cfg)
-    if cfg["neighborhoods"].get("clip_tracts"):
+    if build_metrics.is_clipped(cfg):
         # The "city" is smaller than its counties: keep every tract that overlaps the
-        # neighborhood boundaries. Census blocks later decide which residents of a
-        # straddling tract are actually inside the city.
-        area = gpd.GeoSeries([build_metrics.neighborhood_shapes(cfg).union_all()], crs=4326)
+        # city boundary (or its neighborhoods). Census blocks later decide which
+        # residents of a straddling tract are actually inside the city.
+        area = gpd.GeoSeries([build_metrics.coverage_shape(cfg)], crs=4326)
         crs = tracts.estimate_utm_crs()
         area_p = area.to_crs(crs).iloc[0]
         tp = tracts.to_crs(crs)

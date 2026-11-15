@@ -1,7 +1,7 @@
 import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/+esm";
 import {
   METRICS, currentCity, setupCityNav, loadCity, fmt, fmtMetric, fmtInt, escapeHtml,
-  describeCorrelation, showError, gap,
+  describeCorrelation, showError, gap, segmentedBar, raceParts, ageParts, RACE_GROUPS,
 } from "./data.js?v=__VERSION__";
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -52,6 +52,32 @@ function renderHeadline() {
         <span class="stat-value">${fmtInt(summary.totals.pros)}</span>
         <span class="stat-note">${fmtInt(summary.totals.pros_public)} from public high schools</span></div>
     </div>`;
+}
+
+// ------------------------------------------------------------------ demographics
+function renderPeople() {
+  const d = summary.demographics;
+  document.getElementById("people-years").textContent = `${summary.acs_year - 4}–${summary.acs_year} estimates`;
+  document.getElementById("people-city").innerHTML = `
+    <div class="grid grid-3" style="margin-bottom:1rem">
+      <div class="stat"><span class="stat-label">Residents</span><span class="stat-value">${fmtInt(summary.totals.pop)}</span></div>
+      <div class="stat"><span class="stat-label">Median age (approx.)</span><span class="stat-value">${fmt(d.median_age, "dec1")}</span></div>
+      <div class="stat"><span class="stat-label">Sex (as reported to the Census)</span>
+        <span class="stat-value">${fmt(d.sex.female, "pct")} female</span><span class="stat-note">${fmt(d.sex.male, "pct")} male</span></div>
+    </div>
+    <div class="demo-rows">
+      <div class="demo-row"><span class="small">Race and ethnicity</span><div>${segmentedBar(raceParts((k) => d.race[k]), "Race and ethnicity")}</div></div>
+      <div class="demo-row"><span class="small">Age</span><div>${segmentedBar(ageParts((k) => d.age[k]), "Age")}</div></div>
+    </div>`;
+  const g = summary.income_groups;
+  document.getElementById("people-groups").innerHTML = g.map((x) =>
+    `<div class="demo-row"><span class="small"><strong>${escapeHtml(x.label)}</strong> income</span>
+      <div>${segmentedBar(raceParts((k) => x.demographics.race[k]), `${x.label} income group, race and ethnicity`)}</div></div>`).join("");
+  document.getElementById("people-table").innerHTML = `<table><thead><tr><th>Income group</th>${RACE_GROUPS.map(([, l]) => `<th class="n">${escapeHtml(l)}</th>`).join("")}<th class="n">Under 18</th><th class="n">65+</th><th class="n">Median age</th></tr></thead>
+    <tbody>${g.map((x) => `<tr><td>${escapeHtml(x.label)}</td>${RACE_GROUPS.map(([k]) => `<td class="n">${escapeHtml(fmt(x.demographics.race[k], "pct1"))}</td>`).join("")}
+      <td class="n">${fmt(x.demographics.age["0_17"], "pct")}</td><td class="n">${fmt(x.demographics.age["65p"], "pct")}</td><td class="n">${fmt(x.demographics.median_age, "dec1")}</td></tr>`).join("")}
+      <tr><td><strong>Whole city</strong></td>${RACE_GROUPS.map(([k]) => `<td class="n"><strong>${escapeHtml(fmt(d.race[k], "pct1"))}</strong></td>`).join("")}
+      <td class="n">${fmt(d.age["0_17"], "pct")}</td><td class="n">${fmt(d.age["65p"], "pct")}</td><td class="n">${fmt(d.median_age, "dec1")}</td></tr></tbody></table>`;
 }
 
 // ------------------------------------------------------------------ small multiples (HTML bars)
@@ -184,6 +210,7 @@ async function init() {
     sel.addEventListener("change", renderScatter);
   }
   renderHeadline();
+  renderPeople();
   renderMultiples();
   renderScatter();
   renderCorrelations();

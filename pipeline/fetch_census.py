@@ -10,6 +10,7 @@ from __future__ import annotations
 import geopandas as gpd
 import pandas as pd
 
+import demographics
 from common import arcgis_query, download, get, log, raw_dir
 
 ACS_BASE = "https://www2.census.gov/programs-surveys/acs/summary_file/{y}/table-based-SF/data/5YRData/acsdt5y{y}-{t}.dat"
@@ -78,7 +79,10 @@ def acs(cfg: dict) -> pd.DataFrame:
     out["kids0_17"] = sum(col(AGE_GROUPS[a]) for a in AGE_GROUPS)
     out["kids6_17"] = col(AGE_GROUPS["6_11"]) + col(AGE_GROUPS["12_17"])
     out["kids_in_poverty"] = out["kids0_17_lt100"]
-    return out.fillna({"pop": 0})
+    # Race/ethnicity, age, and sex.
+    demo = demographics.tract_counts(_acs_table(cfg, "B03002"), _acs_table(cfg, "B01001"), _acs_table(cfg, "B01002"))
+    out = out.join(demo, how="left")
+    return out.fillna({"pop": 0, **{c: 0 for c in demographics.COUNT_COLS}})
 
 
 def blocks(cfg: dict) -> gpd.GeoDataFrame:

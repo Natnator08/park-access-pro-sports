@@ -58,6 +58,8 @@
         return `<a class="card city-card" href="city.html?city=${encodeURIComponent(c.slug)}">
           <h3>${escapeHtml(c.name)}</h3>
           <p class="small muted">${fmtInt(c.totals.neighborhoods)} neighborhoods · ${fmtInt(c.totals.pop)} residents</p>
+          ${c.demographics ? `<p class="small" style="margin-top:-.5rem">${Object.entries(c.demographics.race).sort((a, b) => b[1] - a[1]).slice(0, 4)
+            .map(([k, v]) => `${Math.round(v * 100)}% ${escapeHtml(c.demographics.labels.race[k])}`).join(" · ")} · median age ${c.demographics.median_age}</p>` : ""}
           <div class="stat"><span class="stat-label">Park courts &amp; fields per 1,000 kids</span>
             <span class="stat-value">${fmt(lo.facilities_per_1k_kids, "dec1")} <span class="muted" style="font-size:1rem;font-weight:400">vs</span> ${fmt(hi.facilities_per_1k_kids, "dec1")}</span>
             <span class="stat-note">lowest- vs highest-income neighborhoods</span></div>
