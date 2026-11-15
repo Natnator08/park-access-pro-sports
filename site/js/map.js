@@ -11,7 +11,7 @@ const MAP_LAYERS = [
   "est_participation", "pros_per_100k", "pros_public_per_100k", "pros_recent_per_100k",
 ];
 
-const state = { metric: "facilities_per_1k_kids", selected: null, sortKey: "name", sortDir: 1 };
+const state = { metric: "facilities_per_1k_kids", selected: null, sortKey: "name", sortDir: 1, maxSchool: 0 };
 let data, features, map, geoLayer, athleteLayer, parkLayer, medians;
 
 // ------------------------------------------------------------------ class breaks
@@ -61,19 +61,84 @@ function styleFor(feature) {
   };
 }
 
+// Circle size for a school with n pro athletes (area grows with the count).
+const circleRadius = (n) => 4 + Math.sqrt(n) * 1.6;
+const ATHLETE_FILTER_TEXT = {
+  all: "All eras, all schools",
+  public: "Public high schools only",
+  recent: () => `Athletes born ${data.summary.thresholds.recent_birth_year} or later`,
+};
+
+let legendControl;
 function renderLegend() {
   const key = state.metric;
   breaks = computeBreaks(features.map((f) => f.properties[key]));
   const labels = legendLabels(breaks, key);
-  document.getElementById("legend-title").textContent = METRICS[key].short;
-  document.getElementById("legend").innerHTML = labels.map((l, i) =>
-    `<div class="legend-row"><span class="legend-swatch" style="background:${RAMP[i]}"></span>${escapeHtml(l)}</div>`).join("")
-    + `<div class="legend-row"><span class="legend-swatch nodata"></span>No data</div>`;
-  const notes = [];
-  notes.push("Each color holds about the same number of neighborhoods.");
-  if (METRICS[key].rate) notes.push(`Faded areas have fewer than ${fmtInt(data.summary.thresholds.min_pop_reliable)} residents, so their rates swing a lot with one or two athletes.`);
-  if (METRICS[key].estimate) notes.push("Estimated from household income: see Methodology.");
-  document.getElementById("legend-note").textContent = notes.join(" ");
+
+  const notes = ["Each shade holds about the same number of neighborhoods. Darker = higher."];
+  if (METRICS[key].rate) notes.push(`Faded areas have fewer than ${fmtInt(data.summary.thresholds.min_pop_reliable)} residents, so one or two athletes swing their rate a lot.`);
+  if (METRICS[key].estimate) notes.push("Estimated from household income (see Methodology).");
+
+  let html = `
+    <div class="legend-section">
+      <div class="legend-heading">Neighborhood color</div>
+      <div class="legend-metric">${escapeHtml(METRICS[key].short)}</div>
+      <div class="legend-scale">${labels.map((l, i) =>
+        `<div class="legend-row"><span class="legend-swatch" style="background:${RAMP[i]}"></span>${escapeHtml(l)}</div>`).join("")}
+        <div class="legend-row"><span class="legend-swatch nodata"></span>No data</div></div>
+      <p class="legend-note">${notes.join(" ")}</p>
+    </div>`;
+
+  if (document.getElementById("toggle-athletes").checked && state.maxSchool > 0) {
+    const filter = document.getElementById("athlete-filter").value;
+    const filterText = typeof ATHLETE_FILTER_TEXT[filter] === "function" ? ATHLETE_FILTER_TEXT[filter]() : ATHLETE_FILTER_TEXT[filter];
+    const sizes = [1, 5, 20, 50].filter((n) => n <= state.maxSchool);
+    // Add the largest school's count only if it looks clearly bigger than the last sample size.
+    if (state.maxSchool >= sizes[sizes.length - 1] * 1.5) sizes.push(state.maxSchool);
+    const rMax = circleRadius(sizes[sizes.length - 1]) + 2;
+    const circles = sizes.map((n) => {
+      const r = circleRadius(n);
+      return `<span class="legend-circle"><svg width="${rMax * 2}" height="${rMax * 2}" aria-hidden="true">
+          <circle cx="${rMax}" cy="${rMax}" r="${r}" fill="${css("--athlete")}" stroke="${css("--surface")}" stroke-width="2"/></svg>
+          <span>${n}</span></span>`;
+    }).join("");
+    html += `
+    <div class="legend-section">
+      <div class="legend-heading"><span class="swatch-dot" style="background:var(--athlete)" aria-hidden="true"></span> Orange circles: high schools</div>
+      <p class="legend-note" style="margin-top:0">Each circle is a high school where at least one pro athlete played.
+        <strong>Bigger circle = more pro athletes</strong> from that school. Hover over one for names.</p>
+      <div class="legend-circles" role="img" aria-label="Circle sizes: ${sizes.join(", ")} pro athletes">${circles}</div>
+      <p class="legend-note">Number of pro athletes · showing: ${escapeHtml(filterText)}</p>
+    </div>`;
+  }
+  if (document.getElementById("toggle-parks").checked) {
+    html += `
+    <div class="legend-section">
+      <div class="legend-row"><span class="legend-swatch" style="background:${css("--park")};opacity:.6"></span>Public park (ParkServe)</div>
+    </div>`;
+  }
+  legendControl.getContainer().querySelector(".legend-body").innerHTML = html;
+}
+
+function addLegendControl() {
+  legendControl = L.control({ position: "bottomright" });
+  legendControl.onAdd = () => {
+    const div = L.DomUtil.create("div", "map-legend");
+    div.innerHTML = `<div class="legend-top"><h2 class="legend-title">Legend</h2>
+      <button type="button" class="legend-toggle" aria-expanded="true" aria-controls="legend-body">Hide</button></div>
+      <div class="legend-body" id="legend-body" aria-live="polite"></div>`;
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    const btn = div.querySelector(".legend-toggle");
+    btn.addEventListener("click", () => {
+      const open = btn.getAttribute("aria-expanded") === "true";
+      btn.setAttribute("aria-expanded", String(!open));
+      btn.textContent = open ? "Show" : "Hide";
+      div.querySelector(".legend-body").hidden = open;
+    });
+    return div;
+  };
+  legendControl.addTo(map);
 }
 
 function restyle() {
@@ -144,7 +209,7 @@ function select(nid, { pan = false } = {}) {
 // ------------------------------------------------------------------ athletes & parks overlays
 function renderAthletes() {
   if (athleteLayer) athleteLayer.remove();
-  if (!document.getElementById("toggle-athletes").checked) return;
+  if (!document.getElementById("toggle-athletes").checked) { renderLegend(); return; }
   const filter = document.getElementById("athlete-filter").value;
   const yr = data.summary.thresholds.recent_birth_year;
   const list = data.athletes.filter((a) => filter === "all" || (filter === "public" ? a.school_type === "public" : (a.birth_year ?? 0) >= yr));
@@ -155,16 +220,19 @@ function renderAthletes() {
     if (!bySchool.has(k)) bySchool.set(k, { lat: a.lat, lon: a.lon, school: a.school, type: a.school_type, people: [] });
     bySchool.get(k).people.push(a);
   }
+  state.maxSchool = Math.max(0, ...[...bySchool.values()].map((s) => s.people.length));
   athleteLayer = L.layerGroup(
     [...bySchool.values()].map((s) => L.circleMarker([s.lat, s.lon], {
-      radius: 4 + Math.sqrt(s.people.length) * 1.6,
+      radius: circleRadius(s.people.length),
       fillColor: css("--athlete"), fillOpacity: 0.9, color: css("--surface"), weight: 2,
     }).bindTooltip(`<strong>${escapeHtml(s.school)}</strong> <span class="muted">(${s.type})</span><br>${s.people.length} pro athlete${s.people.length > 1 ? "s" : ""}: ${escapeHtml(s.people.slice(0, 4).map((p) => p.name).join(", "))}${s.people.length > 4 ? "…" : ""}`)),
   ).addTo(map);
+  renderLegend();
 }
 
 async function toggleParks() {
   const on = document.getElementById("toggle-parks").checked;
+  renderLegend();
   if (!on) { parkLayer?.remove(); return; }
   if (!parkLayer) {
     const parks = await loadParks(data.parksUrl);
@@ -248,6 +316,7 @@ async function init() {
   map.getPane("labels").style.zIndex = 650;
   map.getPane("labels").style.pointerEvents = "none";
   L.tileLayer(esri("Reference"), { pane: "labels", maxZoom: 16 }).addTo(map);
+  addLegendControl();
   renderLegend();
   geoLayer = L.geoJSON(data.neighborhoods, {
     style: styleFor,
@@ -256,7 +325,6 @@ async function init() {
       layer.bindTooltip(() => `<strong>${escapeHtml(f.properties.name)}</strong><br>${escapeHtml(METRICS[state.metric].short)}: ${fmtMetric(state.metric, f.properties[state.metric])}`, { sticky: true });
     },
   }).addTo(map);
-  map.fitBounds(geoLayer.getBounds(), { padding: [10, 10] });
   renderAthletes();
 
   document.getElementById("toggle-athletes").addEventListener("change", renderAthletes);
