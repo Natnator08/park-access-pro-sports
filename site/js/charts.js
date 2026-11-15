@@ -5,7 +5,7 @@ import {
 } from "./data.js?v=__VERSION__";
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const ORD = [1, 2, 3, 4, 5].map((i) => css(`--ord-${i}`));
+let ORD = [1, 2, 3, 4, 5].map((i) => css(`--ord-${i}`));
 
 const PATH_METRICS = [
   ["walk_access_pct", "Step 1 · Park access"],
@@ -216,6 +216,8 @@ async function init() {
   renderCorrelations();
   let t;
   addEventListener("resize", () => { clearTimeout(t); t = setTimeout(renderScatter, 150); });
+  // Theme toggle: re-read the theme's colors and redraw the scatter plot.
+  addEventListener("themechange", () => { ORD = [1, 2, 3, 4, 5].map((i) => css(`--ord-${i}`)); renderScatter(); });
 }
 
 init().catch((err) => showError(document.getElementById("main"), err));

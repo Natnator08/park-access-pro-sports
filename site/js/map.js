@@ -4,8 +4,9 @@ import {
 } from "./data.js?v=__VERSION__";
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const dark = matchMedia("(prefers-color-scheme: dark)").matches;
-const RAMP = [1, 2, 3, 4, 5].map((i) => css(`--seq-${i}`));
+// Colors are read from CSS so they follow the light/dark theme; refreshed on "themechange".
+let RAMP = [1, 2, 3, 4, 5].map((i) => css(`--seq-${i}`));
+const isDark = () => (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
 const MAP_LAYERS = [
   "median_income", "walk_access_pct", "park_acres_per_1k", "facilities_per_1k_kids",
   "est_participation", "pros_per_100k", "pros_public_per_100k", "pros_recent_per_100k",
@@ -200,9 +201,9 @@ function renderDetail(nid) {
       <div class="meta">${escapeHtml(a.leagues.join(", "))}${a.birth_year ? ` · born ${a.birth_year}` : ""} · ${escapeHtml(a.school)} (${a.school_type})</div></li>`).join("");
   el.innerHTML = `
     <h2>${escapeHtml(p.name)}</h2>
-    ${multiArea ? `<span class="badge">${escapeHtml(p.area)}</span>` : ""}
-    <p class="small muted">${fmtInt(p.pop)} residents · ${fmtInt(p.kids0_17)} kids under 18
-      ${p.reliable ? "" : `<br><span class="badge">Small population: per-capita athlete rates are unreliable</span>`}</p>
+    <div class="chips">${multiArea ? `<span class="badge strong">${escapeHtml(p.area)}</span>` : ""}
+      <span class="badge">${fmtInt(p.pop)} residents</span><span class="badge">${fmtInt(p.kids0_17)} kids under 18</span></div>
+    ${p.reliable ? "" : `<p class="small muted" style="margin:.2rem 0 0">Small population: per-capita athlete rates are unreliable.</p>`}
     ${["income"].map((s) => `
       <div class="step-header">${STEPS[s]}</div>
       <div class="path-v">${group(s).map((k) => meterRow(k, p)).join("")}</div>`).join("")}
@@ -306,6 +307,17 @@ function setView(table) {
   if (table) renderTable(); else map.invalidateSize();
 }
 
+// ------------------------------------------------------------------ basemap
+let baseTiles, labelTiles;
+function setBasemap() {
+  const tone = isDark() ? "Dark" : "Light";
+  const esri = (layer) => `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${tone}_Gray_${layer}/MapServer/tile/{z}/{y}/{x}`;
+  const attribution = 'Basemap &copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, &copy; OpenStreetMap contributors';
+  baseTiles?.remove(); labelTiles?.remove();
+  baseTiles = L.tileLayer(esri("Base"), { attribution, maxZoom: 16 }).addTo(map);
+  labelTiles = L.tileLayer(esri("Reference"), { pane: "labels", maxZoom: 16 }).addTo(map);
+}
+
 // ------------------------------------------------------------------ init
 async function init() {
   const { city, cities } = await currentCity();
@@ -340,16 +352,24 @@ async function init() {
   stacked.addEventListener("change", resetWheel);
   map.on("click", () => map.scrollWheelZoom.enable());
   map.on("mouseout", resetWheel);
-  // Esri gray canvas basemap (no API key). Place-name labels go in a pane above
-  // the colored neighborhoods so they stay readable.
-  const tone = dark ? "Dark" : "Light";
-  const esri = (layer) => `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${tone}_Gray_${layer}/MapServer/tile/{z}/{y}/{x}`;
-  const attribution = 'Basemap &copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, &copy; OpenStreetMap contributors';
-  L.tileLayer(esri("Base"), { attribution, maxZoom: 16 }).addTo(map);
+  // Esri gray canvas basemap (no API key), light or dark to match the theme.
+  // Place-name labels go in a pane above the colored neighborhoods.
   map.createPane("labels");
   map.getPane("labels").style.zIndex = 650;
   map.getPane("labels").style.pointerEvents = "none";
-  L.tileLayer(esri("Reference"), { pane: "labels", maxZoom: 16 }).addTo(map);
+  setBasemap();
+  // Theme toggle: swap basemap and redraw everything that uses theme colors.
+  window.addEventListener("themechange", () => {
+    RAMP = [1, 2, 3, 4, 5].map((i) => css(`--seq-${i}`));
+    setBasemap();
+    restyle();
+    renderAthletes();
+    if (parkLayer) {
+      const wasOn = map.hasLayer(parkLayer);
+      parkLayer.remove(); parkLayer = null;
+      if (wasOn) toggleParks();
+    }
+  });
   addLegendControl();
   renderLegend();
   geoLayer = L.geoJSON(data.neighborhoods, {

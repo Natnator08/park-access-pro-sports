@@ -6,24 +6,28 @@
   <title>Map · Park Access to Pro Sports</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="stylesheet" href="css/style.css?v=__VERSION__">
 </head>
 <body class="map-page">
   <a class="skip-link" href="#nb-search">Skip to neighborhood search</a>
   <header class="site-header">
-    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Park Access → Pro Sports</a>
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span><span>Park Access <span class="brand-accent">→</span> Pro Sports</span></a>
     <nav class="site-nav" aria-label="Main">
       <a href="city.html" data-city-link aria-current="page">Map</a>
       <a href="analysis.html" data-city-link>Analysis</a>
       <a href="methodology.html" data-city-link>Methodology</a>
     </nav>
-    <label class="city-switch"><span class="visually-hidden">City</span><select id="city-select"></select></label>
+    <div class="header-tools">
+      <label class="city-switch"><span class="visually-hidden">City</span><select id="city-select"></select></label>
+    </div>
   </header>
 
   <main class="map-layout">
     <aside class="sidebar" aria-label="Map controls">
-      <h1 id="city-title" style="font-size:1.4rem">Loading…</h1>
-      <p class="small muted" id="city-sub"></p>
+      <div class="kicker">The map</div>
+      <h1 id="city-title">Loading…</h1>
+      <p class="city-sub" id="city-sub"></p>
 
       <label for="nb-search" class="group-title" style="display:block">Find a neighborhood</label>
       <input id="nb-search" type="search" list="nb-names" placeholder="Type a name…" style="width:100%;margin-bottom:1.25rem">
@@ -69,5 +73,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script type="module" src="js/map.js?v=__VERSION__"></script>
+  <script type="module" src="js/theme.js?v=__VERSION__"></script>
 </body>
 </html>

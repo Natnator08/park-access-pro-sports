@@ -5,80 +5,129 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Park Access → Pro Sports</title>
   <meta name="description" content="Tracking park access in low-income neighborhoods and how it connects to youth sports and professional athletes.">
+  <script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="stylesheet" href="css/style.css?v=__VERSION__">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
-    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Park Access → Pro Sports</a>
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span><span>Park Access <span class="brand-accent">→</span> Pro Sports</span></a>
     <nav class="site-nav" aria-label="Main">
       <a href="city.html" data-city-link>Map</a>
       <a href="analysis.html" data-city-link>Analysis</a>
       <a href="methodology.html" data-city-link>Methodology</a>
     </nav>
+    <div class="header-tools"></div>
   </header>
 
-  <main id="main" class="page">
-    <h1>Where kids can play, and who goes pro</h1>
-    <p class="lede">This site tracks how much park space and how many sports facilities kids in low-income
-      neighborhoods actually have. It then follows the path from park access, to youth sports, to the
-      professional leagues.</p>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <!-- Original line art: a soccer pitch's center circle on the left, a basketball half court on the right. -->
+      <svg class="hero-court" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true"
+           fill="none" stroke="#f5f5f2" stroke-width="3">
+        <line x1="300" y1="-20" x2="300" y2="620"/>
+        <circle cx="300" cy="300" r="110"/>
+        <circle cx="300" cy="300" r="5" fill="#f5f5f2"/>
+        <rect x="-40" y="190" width="120" height="220"/>
+        <rect x="620" y="40" width="620" height="520"/>
+        <rect x="1040" y="230" width="200" height="140"/>
+        <circle cx="1040" cy="300" r="70"/>
+        <path d="M1240 70 H1150 A235 235 0 0 0 1150 530 H1240"/>
+        <line x1="1186" y1="270" x2="1186" y2="330" stroke="#d4f53c" stroke-width="5"/>
+        <circle cx="1170" cy="300" r="12" stroke="#d4f53c"/>
+        <path d="M1170 260 A40 40 0 0 0 1170 340" stroke-dasharray="0"/>
+      </svg>
+      <div class="hero-inner">
+        <div class="kicker" id="hero-kicker">A data story</div>
+        <h1 id="hero-title">Where kids can play, <em>and who goes pro</em></h1>
+        <p class="hero-dek">How much park space and how many courts and fields do kids in low-income neighborhoods
+          actually have? This site follows the path from park access, to youth sports, to the professional leagues.</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" id="cta-map" href="city.html">Explore the map →</a>
+          <a class="btn btn-ghost" id="cta-analysis" href="analysis.html">Read the analysis</a>
+        </div>
+      </div>
+    </section>
 
-    <div class="path" aria-label="The three steps this site tracks">
-      <div class="card path-step"><div class="step-n">Step 1</div><h3>Park access</h3>
-        <p class="small muted">Can kids walk to a park? How much park land is there per resident, and how many courts and fields per child?</p></div>
-      <div class="arrow" aria-hidden="true">→</div>
-      <div class="card path-step"><div class="step-n">Step 2</div><h3>Youth sports</h3>
-        <p class="small muted">What share of kids play on a team or take sports lessons? Estimated from a national survey by family income.</p></div>
-      <div class="arrow" aria-hidden="true">→</div>
-      <div class="card path-step"><div class="step-n">Step 3</div><h3>Going pro</h3>
-        <p class="small muted">How many NBA, WNBA, NFL, MLB, MLS, NWSL and NHL players went to high school in the neighborhood?</p></div>
-    </div>
+    <div class="page" style="padding-top:0">
+      <div class="stat-band" id="headline"></div>
 
-    <div id="headline"></div>
+      <div class="section-head">
+        <div class="kicker">01 · The path</div>
+        <h2>From the park to the pros</h2>
+      </div>
+      <div class="path" aria-label="The three steps this site tracks">
+        <div class="card path-step"><span class="step-n" aria-hidden="true">1</span>
+          <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 16c-4 0-7-2.4-7-5.6C5 7.5 7.4 5.6 9 5.2 9.6 3.4 10.7 2 12 2s2.4 1.4 3 3.2c1.6.4 4 2.3 4 5.2 0 3.2-3 5.6-7 5.6Z"/><path d="M8 22h8"/></svg></span>
+          <h3>Park access</h3>
+          <p class="small muted">Can kids walk to a park? How much park land is there per resident, and how many courts and fields per child?</p></div>
+        <div class="card path-step"><span class="step-n" aria-hidden="true">2</span>
+          <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5v19"/><path d="M5.3 5.3c2.3 2.2 2.3 11.2 0 13.4M18.7 5.3c-2.3 2.2-2.3 11.2 0 13.4"/></svg></span>
+          <h3>Youth sports</h3>
+          <p class="small muted">What share of kids play on a team or take sports lessons? Estimated from a national survey by family income.</p></div>
+        <div class="card path-step"><span class="step-n" aria-hidden="true">3</span>
+          <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10v5a5 5 0 0 1-10 0Z"/><path d="M7 5H3.5a3.5 3.5 0 0 0 3.6 4.5M17 5h3.5a3.5 3.5 0 0 1-3.6 4.5"/><path d="M12 13v4M8 21h8M9 17h6v4H9z"/></svg></span>
+          <h3>Going pro</h3>
+          <p class="small muted">How many NBA, WNBA, NFL, MLB, MLS, NWSL and NHL players went to high school in the neighborhood?</p></div>
+      </div>
 
-    <h2>Cities</h2>
-    <div class="grid grid-3" id="cities"><p class="muted">Loading…</p></div>
+      <div class="section-head">
+        <div class="kicker">02 · Pick a city</div>
+        <h2>Cities</h2>
+      </div>
+      <div class="city-grid" id="cities"><p class="muted">Loading…</p></div>
 
-    <div class="callout caution" style="margin-top:2rem">
-      <strong>A note on what this can show.</strong> No dataset follows kids from their neighborhood park to a pro
-      roster, so this site uses careful stand-ins and reports patterns, not proof. Every number links back to a
-      public source on the <a href="methodology.html">Methodology</a> page.
+      <div class="callout caution" style="margin-top:2.5rem">
+        <strong>A note on what this can show.</strong> No dataset follows kids from their neighborhood park to a pro
+        roster, so this site uses careful stand-ins and reports patterns, not proof. Every number links back to a
+        public source on the <a href="methodology.html">Methodology</a> page.
+      </div>
     </div>
   </main>
-  <footer class="site-footer">Built from public data: U.S. Census Bureau, Trust for Public Land ParkServe®, OpenStreetMap, Wikidata, and the National Survey of Children's Health.</footer>
+  <footer class="site-footer"><div class="footer-inner">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span><span>Park Access <span class="brand-accent">→</span> Pro Sports</span></a>
+    <div>Built from public data: U.S. Census Bureau, Trust for Public Land ParkServe®, OpenStreetMap, Wikidata, and the
+      National Survey of Children's Health. <a href="methodology.html">Methodology</a></div>
+  </div></footer>
 
   <script type="module">
     import { loadCities, fmt, fmtInt, escapeHtml, showError, setupCityNav, gap } from "./js/data.js?v=__VERSION__";
     try {
       const cities = await loadCities();
       setupCityNav(cities, cities[0].slug);
+      document.getElementById("hero-kicker").textContent = `A data story · ${cities.map((c) => c.short_name).join(" · ")}`;
       document.getElementById("cities").innerHTML = cities.map((c) => {
         const lo = c.lowest_income_group, hi = c.highest_income_group;
+        const demo = c.demographics ? Object.entries(c.demographics.race).sort((a, b) => b[1] - a[1]).slice(0, 4)
+          .map(([k, v]) => `${Math.round(v * 100)}% ${escapeHtml(c.demographics.labels.race[k])}`).join(" · ") + ` · median age ${c.demographics.median_age}` : "";
         return `<a class="card city-card" href="city.html?city=${encodeURIComponent(c.slug)}">
-          <h3>${escapeHtml(c.name)}</h3>
-          <p class="small muted">${fmtInt(c.totals.neighborhoods)} neighborhoods · ${fmtInt(c.totals.pop)} residents</p>
-          ${c.demographics ? `<p class="small" style="margin-top:-.5rem">${Object.entries(c.demographics.race).sort((a, b) => b[1] - a[1]).slice(0, 4)
-            .map(([k, v]) => `${Math.round(v * 100)}% ${escapeHtml(c.demographics.labels.race[k])}`).join(" · ")} · median age ${c.demographics.median_age}</p>` : ""}
-          <div class="stat"><span class="stat-label">Park courts &amp; fields per 1,000 kids</span>
-            <span class="stat-value">${fmt(lo.facilities_per_1k_kids, "dec1")} <span class="muted" style="font-size:1rem;font-weight:400">vs</span> ${fmt(hi.facilities_per_1k_kids, "dec1")}</span>
-            <span class="stat-note">lowest- vs highest-income neighborhoods</span></div>
-          <p class="small" style="margin:.75rem 0 0">Open the map →</p></a>`;
+          <div class="city-top"><h3>${escapeHtml(c.name)}</h3>
+            <p class="city-meta">${fmtInt(c.totals.neighborhoods)} neighborhoods · ${fmtInt(c.totals.pop)} residents</p></div>
+          <div class="city-body">
+            ${demo ? `<p class="small" style="margin:0">${demo}</p>` : ""}
+            <div class="stat"><span class="stat-label">Park courts &amp; fields per 1,000 kids</span>
+              <span class="stat-value">${fmt(lo.facilities_per_1k_kids, "dec1")} <span class="muted" style="font-size:1rem;font-weight:500">vs</span> ${fmt(hi.facilities_per_1k_kids, "dec1")}</span>
+              <span class="stat-note">lowest- vs highest-income neighborhoods</span></div>
+            <span class="city-cta">Open the map →</span></div></a>`;
       }).join("");
       // Feature the city with the widest park-land gap, worded from its own numbers.
       const withGap = cities.map((c) => ({ c, g: gap(c.lowest_income_group.park_acres_per_1k, c.highest_income_group.park_acres_per_1k) }));
       const pick = withGap.filter((x) => x.g.dir === "less").sort((a, b) => b.g.n - a.g.n)[0];
+      const featured = (pick ? pick.c : cities[0]).slug;
+      document.getElementById("cta-map").href = `city.html?city=${encodeURIComponent(featured)}`;
+      document.getElementById("cta-analysis").href = `analysis.html?city=${encodeURIComponent(featured)}`;
       if (pick) {
         const { c, g } = pick, lo = c.lowest_income_group, hi = c.highest_income_group;
-        document.getElementById("headline").innerHTML = `<section class="card" aria-label="Headline finding">
+        document.getElementById("headline").innerHTML = `<section class="card stat-callout" aria-label="Headline finding">
           <div class="stat-label">In ${escapeHtml(c.short_name)}, kids in the lowest-income neighborhoods have</div>
           <div class="hero-figure">${g.text}× less park land</div>
-          <p style="max-width:62ch">per resident than kids in the highest-income neighborhoods
+          <p style="max-width:62ch;margin:0">per resident than kids in the highest-income neighborhoods
             (${fmt(lo.park_acres_per_1k, "dec1")} vs ${fmt(hi.park_acres_per_1k, "dec1")} acres per 1,000 people), even though
             ${Math.round(lo.walk_access_pct * 100)}% of them live within a 10-minute walk of a park.
             <a href="analysis.html?city=${encodeURIComponent(c.slug)}">See the full analysis →</a></p></section>`;
       }
     } catch (err) { showError(document.getElementById("cities"), err); }
   </script>
+  <script type="module" src="js/theme.js?v=__VERSION__"></script>
 </body>
 </html>
