@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Methodology · Park Access to Pro Sports</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=__VERSION__">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -105,7 +105,7 @@
   </main>
 
   <script type="module">
-    import { currentCity, setupCityNav, loadCity, fmt, fmtInt, escapeHtml, showError } from "./js/data.js";
+    import { currentCity, setupCityNav, loadCity, fmt, fmtInt, escapeHtml, showError } from "./js/data.js?v=__VERSION__";
     try {
       const { city, cities } = await currentCity();
       setupCityNav(cities, city.slug);

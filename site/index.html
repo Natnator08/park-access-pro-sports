@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Park Access → Pro Sports</title>
   <meta name="description" content="Tracking park access in low-income neighborhoods and how it connects to youth sports and professional athletes.">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=__VERSION__">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -49,7 +49,7 @@
   <footer class="site-footer">Built from public data: U.S. Census Bureau, Trust for Public Land ParkServe®, OpenStreetMap, Wikidata, and the National Survey of Children's Health.</footer>
 
   <script type="module">
-    import { loadCities, fmt, fmtInt, escapeHtml, showError, setupCityNav, gap } from "./js/data.js";
+    import { loadCities, fmt, fmtInt, escapeHtml, showError, setupCityNav, gap } from "./js/data.js?v=__VERSION__";
     try {
       const cities = await loadCities();
       setupCityNav(cities, cities[0].slug);

@@ -1,7 +1,7 @@
 import {
   METRICS, STEPS, currentCity, setupCityNav, loadCity, loadParks, fmt, fmtMetric, fmtInt,
   median, escapeHtml, showError,
-} from "./data.js";
+} from "./data.js?v=__VERSION__";
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const dark = matchMedia("(prefers-color-scheme: dark)").matches;

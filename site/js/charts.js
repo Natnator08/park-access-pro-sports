@@ -2,7 +2,7 @@ import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/+e
 import {
   METRICS, currentCity, setupCityNav, loadCity, fmt, fmtMetric, fmtInt, escapeHtml,
   describeCorrelation, showError, gap,
-} from "./data.js";
+} from "./data.js?v=__VERSION__";
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const ORD = [1, 2, 3, 4, 5].map((i) => css(`--ord-${i}`));

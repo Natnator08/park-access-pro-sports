@@ -42,10 +42,14 @@ export function compact(v) {
   return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(v);
 }
 
+// Replaced with the commit id at deploy time (see .github/workflows/pages.yml),
+// so browsers never mix cached files from different versions of the site.
+export const VERSION = "__VERSION__";
+
 const cache = new Map();
 async function getJSON(url) {
   if (!cache.has(url)) {
-    cache.set(url, fetch(url).then((r) => {
+    cache.set(url, fetch(`${url}?v=${VERSION}`).then((r) => {
       if (!r.ok) throw new Error(`Could not load ${url} (${r.status})`);
       return r.json();
     }));
