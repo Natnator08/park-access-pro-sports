@@ -119,3 +119,15 @@ export function showError(el, err) {
     <p class="small">${escapeHtml(err.message)}. If you opened this file directly, serve the
     <code>site/</code> folder with a local web server instead (see README).</p></div>`;
 }
+
+/**
+ * Compare the lowest- and highest-income groups on a "more is better" measure.
+ * Returns how the lowest group compares: "less" (it has less), "more", or "same".
+ */
+export function gap(low, high) {
+  if (!low || !high) return { dir: low === high ? "same" : (low ? "more" : "less"), n: null, text: "" };
+  const r = high / low;
+  const dir = r >= 1.15 ? "less" : r <= 1 / 1.15 ? "more" : "same";
+  const n = dir === "less" ? r : dir === "more" ? 1 / r : 1;
+  return { dir, n, text: n >= 10 ? n.toFixed(0) : n.toFixed(1) };
+}

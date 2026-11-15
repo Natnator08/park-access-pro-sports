@@ -49,7 +49,7 @@
   <footer class="site-footer">Built from public data: U.S. Census Bureau, Trust for Public Land ParkServe®, OpenStreetMap, Wikidata, and the National Survey of Children's Health.</footer>
 
   <script type="module">
-    import { loadCities, fmt, fmtInt, escapeHtml, showError, setupCityNav } from "./js/data.js";
+    import { loadCities, fmt, fmtInt, escapeHtml, showError, setupCityNav, gap } from "./js/data.js";
     try {
       const cities = await loadCities();
       setupCityNav(cities, cities[0].slug);
@@ -63,14 +63,19 @@
             <span class="stat-note">lowest- vs highest-income neighborhoods</span></div>
           <p class="small" style="margin:.75rem 0 0">Open the map →</p></a>`;
       }).join("");
-      const c = cities[0], lo = c.lowest_income_group, hi = c.highest_income_group;
-      document.getElementById("headline").innerHTML = `<section class="card" aria-label="Headline finding">
-        <div class="stat-label">In ${escapeHtml(c.short_name)}, kids in the lowest-income neighborhoods have</div>
-        <div class="hero-figure">${(hi.park_acres_per_1k / lo.park_acres_per_1k).toFixed(0)}× less park land</div>
-        <p style="max-width:62ch">per resident than kids in the highest-income neighborhoods
-          (${fmt(lo.park_acres_per_1k, "dec1")} vs ${fmt(hi.park_acres_per_1k, "dec1")} acres per 1,000 people), even though
-          ${Math.round(lo.walk_access_pct * 100)}% of them live within a 10-minute walk of a park.
-          <a href="analysis.html?city=${encodeURIComponent(c.slug)}">See the full analysis →</a></p></section>`;
+      // Feature the city with the widest park-land gap, worded from its own numbers.
+      const withGap = cities.map((c) => ({ c, g: gap(c.lowest_income_group.park_acres_per_1k, c.highest_income_group.park_acres_per_1k) }));
+      const pick = withGap.filter((x) => x.g.dir === "less").sort((a, b) => b.g.n - a.g.n)[0];
+      if (pick) {
+        const { c, g } = pick, lo = c.lowest_income_group, hi = c.highest_income_group;
+        document.getElementById("headline").innerHTML = `<section class="card" aria-label="Headline finding">
+          <div class="stat-label">In ${escapeHtml(c.short_name)}, kids in the lowest-income neighborhoods have</div>
+          <div class="hero-figure">${g.text}× less park land</div>
+          <p style="max-width:62ch">per resident than kids in the highest-income neighborhoods
+            (${fmt(lo.park_acres_per_1k, "dec1")} vs ${fmt(hi.park_acres_per_1k, "dec1")} acres per 1,000 people), even though
+            ${Math.round(lo.walk_access_pct * 100)}% of them live within a 10-minute walk of a park.
+            <a href="analysis.html?city=${encodeURIComponent(c.slug)}">See the full analysis →</a></p></section>`;
+      }
     } catch (err) { showError(document.getElementById("cities"), err); }
   </script>
 </body>

@@ -1,7 +1,7 @@
 import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/+esm";
 import {
   METRICS, currentCity, setupCityNav, loadCity, fmt, fmtMetric, fmtInt, escapeHtml,
-  describeCorrelation, showError,
+  describeCorrelation, showError, gap,
 } from "./data.js";
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -24,23 +24,30 @@ let summary, nbs;
 function renderHeadline() {
   const g = summary.income_groups;
   const lo = g[0], hi = g[g.length - 1];
-  const facRatio = hi.facilities_per_1k_kids / lo.facilities_per_1k_kids;
-  const acreRatio = hi.park_acres_per_1k / lo.park_acres_per_1k;
+  const fac = gap(lo.facilities_per_1k_kids, hi.facilities_per_1k_kids);
+  const acre = gap(lo.park_acres_per_1k, hi.park_acres_per_1k);
+  const walkLo = Math.round(lo.walk_access_pct * 100), walkHi = Math.round(hi.walk_access_pct * 100);
+  const hero = fac.dir === "same" ? "About the same" : `${fac.text}× ${fac.dir === "less" ? "fewer" : "more"}`;
+  const acrePhrase = acre.dir === "same" ? "about the same amount of" : `${acre.text}× ${acre.dir}`;
+  // Only draw the "not distance" conclusion when the data actually shows it.
+  const gaps = [acre.dir === "less" && "park size", fac.dir === "less" && "sports facilities"].filter(Boolean);
+  const notDistance = gaps.length > 0 && walkLo >= walkHi - 5;
   const partial = summary.partial_correlations.find((c) => c.x === "facilities_per_1k_kids" && c.y === "pros_per_100k");
   document.getElementById("headline-card").innerHTML = `
     <div class="stat-label">Kids in the lowest-income fifth of neighborhoods have</div>
-    <div class="hero-figure">${facRatio.toFixed(1)}× fewer</div>
+    <div class="hero-figure">${hero}</div>
     <p style="font-size:1.1rem;max-width:62ch">park courts and fields per child than kids in the highest-income fifth
       (${fmt(lo.facilities_per_1k_kids, "dec1")} vs ${fmt(hi.facilities_per_1k_kids, "dec1")} per 1,000 kids), and
-      ${acreRatio.toFixed(0)}× less park land per resident. Yet ${Math.round(lo.walk_access_pct * 100)}% of them live
-      within a 10-minute walk of <em>some</em> park. <strong>The gap is size and facilities, not distance.</strong></p>
+      ${acrePhrase} park land per resident (${fmt(lo.park_acres_per_1k, "dec1")} vs ${fmt(hi.park_acres_per_1k, "dec1")} acres per 1,000 people).
+      ${walkLo}% of them live within a 10-minute walk of a park, compared with ${walkHi}% in the highest-income fifth.
+      ${notDistance ? `<strong>The gap is in ${gaps.join(" and ")}, not distance.</strong>` : ""}</p>
     <div class="grid grid-3" style="margin-top:1rem">
       <div class="stat"><span class="stat-label">Est. kids in organized sports</span>
         <span class="stat-value">${fmt(lo.est_participation, "pct")} vs ${fmt(hi.est_participation, "pct")}</span>
         <span class="stat-note">lowest vs highest income group (estimate)</span></div>
       <div class="stat"><span class="stat-label">Park courts &amp; fields vs. pro athletes</span>
         <span class="stat-value">ρ = ${partial ? partial.rho.toFixed(2) : "–"}</span>
-        <span class="stat-note">${partial ? `${describeCorrelation(partial.rho, partial.p).strength.toLowerCase()}, after accounting for income` : ""}</span></div>
+        <span class="stat-note">${partial ? `${describeCorrelation(partial.rho, partial.p).strength.toLowerCase()}, after accounting for income (${describeCorrelation(partial.rho, partial.p).sig})` : ""}</span></div>
       <div class="stat"><span class="stat-label">Pro athletes found</span>
         <span class="stat-value">${fmtInt(summary.totals.pros)}</span>
         <span class="stat-note">${fmtInt(summary.totals.pros_public)} from public high schools</span></div>
